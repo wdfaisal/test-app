@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="لُقمة — تجربة توصيل طعام فاخرة. اطلب من أفضل المطاعم وتابع طلبك مباشرة.">
+  <meta name="theme-color" content="#06C167">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="لُقمة">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>لُقمة | توصيل الطعام</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #0C1511;
+      overflow: hidden;
+    }
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+      background: radial-gradient(circle at 50% 40%, #13241B 0%, #08110D 100%);
+      color: #F8F8F8;
+      font-family: sans-serif;
+      transition: opacity .45s ease;
+      z-index: 9;
+    }
+    #loading .mark {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -.5px;
+    }
+    #loading .dot { color: #06C167; }
+    #loading .line {
+      width: 38px;
+      height: 3px;
+      border-radius: 99px;
+      background: rgba(255,255,255,.12);
+      overflow: hidden;
+    }
+    #loading .line::after {
+      content: '';
+      display: block;
+      width: 40%;
+      height: 100%;
+      border-radius: 99px;
+      background: #06C167;
+      animation: load 1s ease-in-out infinite alternate;
+    }
+    @keyframes load {
+      from { transform: translateX(-20%); }
+      to { transform: translateX(170%); }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div class="mark">لُقمة<span class="dot">.</span></div>
+    <div class="line"></div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      const loader = document.getElementById('loading');
+      if (!loader) return;
+      loader.style.opacity = '0';
+      setTimeout(() => loader.remove(), 500);
+    });
+  </script>
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
