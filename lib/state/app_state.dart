@@ -37,7 +37,11 @@ class AppState extends ChangeNotifier {
 
   double get discount {
     if (!_promoApplied) return 0;
-    final rate = _promoCode == 'SULTAN15' ? 0.15 : 0.2;
+    final rate = switch (_promoCode) {
+      'SULTAN15' => 0.15,
+      'YALLA30' => 0.30,
+      _ => 0.20,
+    };
     return math.min(subtotal * rate, 25);
   }
 
@@ -119,7 +123,9 @@ class AppState extends ChangeNotifier {
 
   bool applyPromo(String code) {
     final normalized = code.trim().toUpperCase();
-    if (normalized == 'SULTAN15' || normalized == 'WELCOME20') {
+    if (normalized == 'SULTAN15' ||
+        normalized == 'WELCOME20' ||
+        normalized == 'YALLA30') {
       _promoCode = normalized;
       _promoApplied = true;
       notifyListeners();

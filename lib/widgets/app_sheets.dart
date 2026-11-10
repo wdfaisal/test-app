@@ -939,6 +939,193 @@ class _PastOrderCard extends StatelessWidget {
   }
 }
 
+/// "المفضلة" — bottom-nav tab sheet listing the saved restaurants.
+Future<void> showFavoritesSheet(BuildContext context) {
+  final state = AppScope.of(context, listen: false);
+  return showAppSheet(
+    context: context,
+    heightFactor: 0.72,
+    child: AnimatedBuilder(
+      animation: state,
+      builder: (context, _) {
+        final favorites = restaurants
+            .where((restaurant) => state.isFavorite(restaurant.id))
+            .toList();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 10),
+            const Center(child: SheetHandle()),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: Row(
+                children: [
+                  Expanded(child: Text('المفضلة', style: AppTextStyles.headline)),
+                  SoftIconButton(
+                    icon: Icons.close_rounded,
+                    size: 38,
+                    iconSize: 18,
+                    shadow: false,
+                    background: AppColors.inkSoft,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: favorites.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(22),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: const BoxDecoration(
+                                color: AppColors.primarySoft,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.favorite_border_rounded,
+                                color: AppColors.primaryDark,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text('لا توجد مطاعم مفضلة', style: AppTextStyles.title),
+                            const SizedBox(height: 4),
+                            Text(
+                              'اضغط على القلب في أي مطعم ليظهر هنا',
+                              style: AppTextStyles.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
+                      itemCount: favorites.length,
+                      itemBuilder: (context, index) {
+                        final restaurant = favorites[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _FavoriteRow(
+                            restaurant: restaurant,
+                            isFavorite: true,
+                            onToggle: () =>
+                                state.toggleFavorite(restaurant.id),
+                            onOpen: () {
+                              Navigator.pop(context);
+                              Navigator.of(context).push(
+                                premiumRoute(
+                                  RestaurantScreen(restaurant: restaurant),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+class _FavoriteRow extends StatelessWidget {
+  const _FavoriteRow({
+    required this.restaurant,
+    required this.isFavorite,
+    required this.onToggle,
+    required this.onOpen,
+  });
+
+  final Restaurant restaurant;
+  final bool isFavorite;
+  final VoidCallback onToggle;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              AppImage(
+                restaurant.logo,
+                width: 52,
+                height: 52,
+                radius: 14,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      restaurant.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.titleSmall,
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 14,
+                          color: AppColors.tertiary,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${restaurant.rating} • ${restaurant.deliveryTime}',
+                          style: AppTextStyles.caption.copyWith(fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: onToggle,
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.inkSoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isFavorite
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                    size: 19,
+                    color: isFavorite
+                        ? AppColors.primaryDark
+                        : AppColors.textTertiary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 Future<void> showProfileSheet(BuildContext context) {
   final state = AppScope.of(context, listen: false);
   var notifications = true;

@@ -103,6 +103,19 @@ Future<void> _precachePhotos(WidgetTester tester, BuildContext context) async {
       'yalla/y_item_truffle.jpg',
       'yalla/y_item_crispy.jpg',
       'yalla/y_item_fries.jpg',
+      // Pure-white home design photography.
+      'yalla/y_pure_promo.jpg',
+      'yalla/y_pure_kfc.png',
+      'yalla/y_pure_crunchy.jpg',
+      'yalla/y_pure_twister.jpg',
+      'yalla/y_pure_fries.jpg',
+      'yalla/y_pure_bianco.jpg',
+      'yalla/y_pure_narjis.jpg',
+      'yalla/y_pure_garlic.jpg',
+      'yalla/y_pure_shawarma.jpg',
+      'yalla/y_pure_sultan.jpg',
+      'yalla/y_pure_maestro.jpg',
+      'yalla/y_pure_truffle.jpg',
     ]) {
       await precacheImage(AssetImage('assets/images/$name'), context);
     }

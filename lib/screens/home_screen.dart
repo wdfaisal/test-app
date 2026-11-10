@@ -9,14 +9,100 @@ import '../theme/app_theme.dart';
 import '../widgets/app_sheets.dart';
 import '../widgets/ui.dart';
 import 'restaurant_screen.dart';
-import 'tracking_screen.dart';
 
-const _sortLabels = {
-  'relevance': 'الأكثر ملاءمة',
-  'rating': 'الأعلى تقييماً',
-  'fast': 'الأسرع توصيلاً',
-  'fee': 'الأقل رسوم توصيل',
-};
+// ---------------------------------------------------------------------------
+// Home — "الرئيسية (المظهر الأبيض النقي)".
+//
+// A faithful port of the pure-white Stitch export: fixed white header with the
+// address pill + wallet + cart, services tiles, the YALLA30 gradient banner,
+// "عروض حصرية اليوم" carousel, "مطاعم بالقرب منك" feed and the
+// "الأكثر طلباً هذا الأسبوع" grid — all spacing/colors/type sizes follow the
+// computed-style values measured in the design HTML.
+// ---------------------------------------------------------------------------
+
+/// Design text styles — every line renders in IBM Plex Sans Arabic.
+abstract final class _T {
+  static const _family = 'IBM Plex Sans Arabic';
+
+  /// headline-sm: 18/24 w600.
+  static const headlineSm = TextStyle(
+    fontFamily: _family,
+    fontSize: 18,
+    height: 24 / 18,
+    fontWeight: FontWeight.w600,
+    color: AppColors.ink,
+  );
+
+  /// headline-md: 20/26 w600.
+  static const headlineMd = TextStyle(
+    fontFamily: _family,
+    fontSize: 20,
+    height: 26 / 20,
+    fontWeight: FontWeight.w600,
+    color: AppColors.ink,
+  );
+
+  /// label-lg: 14/20 w600.
+  static const labelLg = TextStyle(
+    fontFamily: _family,
+    fontSize: 14,
+    height: 20 / 14,
+    fontWeight: FontWeight.w600,
+    color: AppColors.ink,
+  );
+
+  /// label-md: 12/16 w600.
+  static const labelMd = TextStyle(
+    fontFamily: _family,
+    fontSize: 12,
+    height: 16 / 12,
+    fontWeight: FontWeight.w600,
+    color: AppColors.ink,
+  );
+
+  /// label-sm: 10/14 w600.
+  static const labelSm = TextStyle(
+    fontFamily: _family,
+    fontSize: 10,
+    height: 14 / 10,
+    fontWeight: FontWeight.w600,
+    color: AppColors.ink,
+  );
+
+  /// body-sm: 12/16 w400.
+  static const bodySm = TextStyle(
+    fontFamily: _family,
+    fontSize: 12,
+    height: 16 / 12,
+    color: AppColors.ink,
+  );
+
+  /// body-md: 14/20 w400.
+  static const bodyMd = TextStyle(
+    fontFamily: _family,
+    fontSize: 14,
+    height: 20 / 14,
+    color: AppColors.ink,
+  );
+
+  static final headlineSmBold = headlineSm.copyWith(fontWeight: FontWeight.w700);
+  static final headlineMdBold = headlineMd.copyWith(fontWeight: FontWeight.w700);
+  static final labelMdPrimary = labelMd.copyWith(color: AppColors.primaryDark);
+  static final labelMdMuted = labelMd.copyWith(color: AppColors.inkMuted);
+  static final bodyMdMuted = bodyMd.copyWith(color: AppColors.inkMuted);
+}
+
+/// "(2.4k+)" review-count chips from the design.
+String _reviewChip(int count) {
+  if (count >= 1000) {
+    final k = (count / 100).round() / 10;
+    return '(${k.toStringAsFixed(1)}k+)';
+  }
+  return '($count)';
+}
+
+/// "1.8 كم" — one decimal, as measured in the design.
+String _km(double value) => '${value.toStringAsFixed(1)} كم';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,67 +113,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
-  final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocus = FocusNode();
-  String? _selectedCategory;
-  String _query = '';
-  bool _gridView = false;
-  String _sortMode = 'relevance';
-  bool _freeDeliveryOnly = false;
+  final GlobalKey _nearbyKey = GlobalKey();
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _searchController.dispose();
-    _searchFocus.dispose();
     super.dispose();
   }
 
-  List<Restaurant> get _filteredRestaurants {
-    var list = restaurants.toList();
-    if (_selectedCategory != null) {
-      list = list
-          .where((restaurant) => restaurant.tags.contains(_selectedCategory))
-          .toList();
-    }
-    if (_freeDeliveryOnly) {
-      list = list.where((r) => r.deliveryFee == 0).toList();
-    }
-    if (_query.trim().isNotEmpty) {
-      final query = _query.trim();
-      list = list.where((restaurant) {
-        return restaurant.name.contains(query) ||
-            restaurant.cuisine.contains(query) ||
-            restaurant.menu.any((item) => item.name.contains(query));
-      }).toList();
-    }
-    switch (_sortMode) {
-      case 'rating':
-        list.sort((a, b) => b.rating.compareTo(a.rating));
-        break;
-      case 'fast':
-        list.sort((a, b) => a.deliveryMin.compareTo(b.deliveryMin));
-        break;
-      case 'fee':
-        list.sort((a, b) => a.deliveryFee.compareTo(b.deliveryFee));
-        break;
-    }
-    return list;
-  }
+  // --- Interactions --------------------------------------------------------
 
   Future<void> _handleNavTap(int index) async {
     switch (index) {
-      case 1:
-        await showSearchOverlay(context);
+      case 1: // المفضلة
+        await showFavoritesSheet(context);
         break;
-      case 2:
+      case 2: // طلباتي
         await showOrdersSheet(context);
         break;
-      case 3:
+      case 3: // حسابي
         await showProfileSheet(context);
         break;
-      default:
-        _searchFocus.unfocus();
+      default: // استكشف — back to the very top.
         _scrollController.animateTo(
           0,
           duration: const Duration(milliseconds: 600),
@@ -99,15 +146,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _openRestaurant(Restaurant restaurant) {
     Navigator.of(context)
         .push(premiumRoute(RestaurantScreen(restaurant: restaurant)));
-  }
-
-  void _openBrand(BrandTile brand) {
-    final target = brand.restaurantId == null
-        ? null
-        : restaurants
-              .where((r) => r.id == brand.restaurantId)
-              .firstOrNull;
-    _openRestaurant(target ?? restaurants.first);
   }
 
   void _openCart() {
@@ -125,144 +163,54 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showFilterSheet() {
-    var sortMode = _sortMode;
-    var freeOnly = _freeDeliveryOnly;
-    showAppSheet(
-      context: context,
-      heightFactor: 0.56,
-      dismissible: true,
-      child: StatefulBuilder(
-        builder: (sheetContext, setSheetState) {
-          return Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 10),
-                const Center(child: SheetHandle()),
-                const SizedBox(height: 18),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 22),
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text('تصفية النتائج', style: AppTextStyles.title),
-                      ),
-                      SoftIconButton(
-                        icon: Icons.close_rounded,
-                        size: 38,
-                        iconSize: 18,
-                        shadow: false,
-                        background: AppColors.inkSoft,
-                        onTap: () => Navigator.pop(sheetContext),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(22, 18, 22, 8),
-                    children: [
-                      Text(
-                        'ترتيب النتائج',
-                        style: AppTextStyles.label
-                            .copyWith(color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 8),
-                      ..._sortLabels.entries.map((entry) {
-                        final selected = sortMode == entry.key;
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: Material(
-                            color: selected
-                                ? AppColors.primarySoft
-                                : AppColors.surfaceLow,
-                            borderRadius: BorderRadius.circular(12),
-                            clipBehavior: Clip.antiAlias,
-                            child: InkWell(
-                              onTap: () => setSheetState(
-                                () => sortMode = entry.key,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 13,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      selected
-                                          ? Icons.radio_button_checked_rounded
-                                          : Icons.radio_button_off_rounded,
-                                      size: 20,
-                                      color: selected
-                                          ? AppColors.primary
-                                          : AppColors.textTertiary,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Text(
-                                        entry.value,
-                                        style: AppTextStyles.label,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
-                      const SizedBox(height: 12),
-                      SwitchListTile(
-                        value: freeOnly,
-                        onChanged: (value) =>
-                            setSheetState(() => freeOnly = value),
-                        activeTrackColor: AppColors.primary,
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          'توصيل مجاني فقط',
-                          style: AppTextStyles.label,
-                        ),
-                        subtitle: Text(
-                          'إظهار المطاعم التي توصيل مجاناً',
-                          style: AppTextStyles.bodySmall,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 6, 22, 18),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () {
-                        setState(() {
-                          _sortMode = sortMode;
-                          _freeDeliveryOnly = freeOnly;
-                        });
-                        Navigator.pop(sheetContext);
-                      },
-                      child: const Text('تطبيق التصفية'),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+  void _quickAdd(Restaurant restaurant, MenuItem item) {
+    AppScope.of(context, listen: false).addToCart(
+      restaurant: restaurant,
+      item: item,
+      selections: const {},
+      quantity: 1,
     );
+    showAppSnackBar(context, 'أُضيف "${item.name}" إلى السلة');
+  }
+
+  void _applyYallaPromo() {
+    AppScope.of(context, listen: false).applyPromo('YALLA30');
+    showAppSnackBar(context, 'تم تفعيل كود YALLA30 — خصم 30% على أول طلبين!');
+  }
+
+  void _comingSoon(String service) {
+    showAppSnackBar(
+      context,
+      'خدمة $service قادمة قريباً — ترقّبونا',
+      icon: Icons.rocket_launch_rounded,
+    );
+  }
+
+  /// "المطاعم" service tile — glides down to the nearby restaurants feed.
+  void _scrollToNearby() {
+    final target = _nearbyKey.currentContext;
+    if (target != null) {
+      Scrollable.ensureVisible(
+        target,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final filtered = _filteredRestaurants;
+    final offerRestaurants = offerRestaurantIds.map(restaurantById).toList();
+    final nearbyRestaurants = nearbyRestaurantIds.map(restaurantById).toList();
+    final mostOrdered = [
+      for (final (restaurantId, itemId) in mostOrderedEntries)
+        (
+          restaurantById(restaurantId),
+          menuItemById(restaurantById(restaurantId), itemId),
+          mostOrderedSubtitles[itemId] ?? restaurantById(restaurantId).name,
+        ),
+    ];
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -270,77 +218,50 @@ class _HomeScreenState extends State<HomeScreen> {
         bottom: false,
         child: Column(
           children: [
-            _YallaHeader(
+            _PureHeader(
               address: state.address,
               cartCount: state.cartCount,
-              onBack: () => Navigator.maybePop(context),
               onAddressTap: () => showAddressPicker(context),
+              onWalletTap: () => showPaymentPicker(context),
               onCartTap: _openCart,
-              searchController: _searchController,
-              searchFocus: _searchFocus,
-              onQueryChanged: (value) => setState(() => _query = value),
             ),
             Expanded(
-              child: Stack(
-                children: [
-                  SingleChildScrollView(
-                    controller: _scrollController,
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.only(bottom: 118),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _CategoriesSection(
-                          selectedCategory: _selectedCategory,
-                          onCategoryTap: _toggleCategory,
-                        ),
-                        _BrandsSection(onBrandTap: _openBrand),
-                        _SortBar(
-                          sortLabel: _sortLabels[_sortMode]!,
-                          gridView: _gridView,
-                          onSortTap: _showFilterSheet,
-                          onViewToggle: () =>
-                              setState(() => _gridView = !_gridView),
-                        ),
-                        if (filtered.isEmpty)
-                          const _EmptyResults()
-                        else if (_gridView)
-                          _RestaurantGrid(
-                            restaurants: filtered,
-                            onOpen: _openRestaurant,
-                          )
-                        else
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                            child: Column(
-                              children: [
-                                for (final restaurant in filtered) ...[
-                                  _RestaurantCard(
-                                    restaurant: restaurant,
-                                    onTap: () => _openRestaurant(restaurant),
-                                  ),
-                                  const SizedBox(height: 12),
-                                ],
-                              ],
-                            ),
-                          ),
-                      ],
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SearchBar(onTap: () => showSearchOverlay(context)),
+                    _ServicesSection(
+                      onRestaurantsTap: _scrollToNearby,
+                      onServiceTap: _comingSoon,
                     ),
-                  ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 14,
-                    child: Center(
-                      child: _FloatingFilterPill(
-                        onMapTap: () => Navigator.of(
-                          context,
-                        ).push(premiumRoute(const TrackingScreen())),
-                        onFilterTap: _showFilterSheet,
-                      ),
+                    _PromoBanner(onApply: _applyYallaPromo),
+                    _OffersSection(
+                      restaurants: offerRestaurants,
+                      isFavorite: state.isFavorite,
+                      onToggleFavorite: (id) => state.toggleFavorite(id),
+                      onOpenRestaurant: _openRestaurant,
+                      onAddItem: _quickAdd,
                     ),
-                  ),
-                ],
+                    _NearbySection(
+                      sectionKey: _nearbyKey,
+                      restaurants: nearbyRestaurants,
+                      isFavorite: state.isFavorite,
+                      onToggleFavorite: (id) => state.toggleFavorite(id),
+                      onOpenRestaurant: _openRestaurant,
+                      onSeeAll: () => showSearchOverlay(context),
+                    ),
+                    _MostOrderedSection(
+                      entries: mostOrdered,
+                      onOpenRestaurant: _openRestaurant,
+                      onAddItem: _quickAdd,
+                      onSeeMore: () => showSearchOverlay(context),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -352,579 +273,334 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  void _toggleCategory(String id) {
-    setState(() {
-      // "الكل" always resets the filter — every other tile toggles itself.
-      if (id == 'الكل') {
-        _selectedCategory = null;
-        return;
-      }
-      _selectedCategory = _selectedCategory == id ? null : id;
-    });
-  }
 }
 
 // ---------------------------------------------------------------------------
-// Orange gradient header with address pill, cart button, search and the
-// signature saw-tooth divider (design 0).
+// Fixed white header — location pill + wallet + cart (h-56, hairline border).
 // ---------------------------------------------------------------------------
 
-class _YallaHeader extends StatelessWidget {
-  const _YallaHeader({
+class _PureHeader extends StatelessWidget {
+  const _PureHeader({
     required this.address,
     required this.cartCount,
-    required this.onBack,
     required this.onAddressTap,
+    required this.onWalletTap,
     required this.onCartTap,
-    required this.searchController,
-    required this.searchFocus,
-    required this.onQueryChanged,
   });
 
   final String address;
   final int cartCount;
-  final VoidCallback onBack;
   final VoidCallback onAddressTap;
+  final VoidCallback onWalletTap;
   final VoidCallback onCartTap;
-  final TextEditingController searchController;
-  final FocusNode searchFocus;
-  final ValueChanged<String> onQueryChanged;
 
   String get _shortAddress {
     final parts = address.split('،');
-    if (parts.length >= 2) return '${parts[0]}، ${parts[1]}';
+    if (parts.length >= 2) {
+      return '${parts[0].trim()}، ${parts[1].trim()}';
+    }
     return address;
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFFFF591B), Color(0xFFFF3E00)],
+        color: AppColors.surface,
+        border: Border(
+          bottom: BorderSide(color: AppColors.surfacePure, width: 1),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x1A000000),
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
+        boxShadow: AppColors.cardShadow,
       ),
-      child: Column(
+      child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    _GlassCircleButton(
-                      icon: Icons.arrow_back,
-                      iconSize: 24,
-                      tooltip: 'رجوع',
-                      onTap: onBack,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Material(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(999),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: onAddressTap,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.location_on_rounded,
-                                  size: 18,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'التوصيل إلى',
-                                        style: AppTextStyles.caption.copyWith(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.8,
-                                          ),
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      Row(
-                                        children: [
-                                          Flexible(
-                                            child: Text(
-                                              _shortAddress,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: AppTextStyles.caption
-                                                  .copyWith(
-                                                    color: Colors.white,
-                                                    fontSize: 13,
-                                                    fontWeight:
-                                                        FontWeight.w700,
-                                                  ),
-                                            ),
-                                          ),
-                                          const Icon(
-                                            Icons.expand_more_rounded,
-                                            size: 16,
-                                            color: Colors.white,
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+          Expanded(
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(999),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: onAddressTap,
+                borderRadius: BorderRadius.circular(999),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 22,
+                        color: AppColors.primaryDark,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'التوصيل إلى: $_shortAddress',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: _T.labelMd.copyWith(
+                            fontSize: 16,
+                            height: 20 / 16,
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        _GlassCircleButton(
-                          icon: Icons.shopping_bag_rounded,
-                          iconSize: 22,
-                          tooltip: 'سلة المشتريات',
-                          onTap: onCartTap,
-                        ),
-                        if (cartCount > 0)
-                          Positioned(
-                            top: 4,
-                            left: 4,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                // White search bar.
-                Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 20,
+                        color: AppColors.inkMuted,
                       ),
                     ],
                   ),
-                  child: TextField(
-                    controller: searchController,
-                    focusNode: searchFocus,
-                    textDirection: TextDirection.rtl,
-                    onChanged: onQueryChanged,
-                    onSubmitted: (_) => searchFocus.unfocus(),
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'ابحث عن اسم مطعم، وجبة أو نوع المطبخ...',
-                      hintStyle: AppTextStyles.body.copyWith(
-                        color: AppColors.textSecondary.withValues(
-                          alpha: 0.8,
-                        ),
-                      ),
-                      prefixIcon: const Icon(
-                        Icons.search_rounded,
-                        size: 20,
-                        color: AppColors.textSecondary,
-                      ),
-                      suffixIcon: searchController.text.isEmpty
-                          ? null
-                          : IconButton(
-                              icon: const Icon(
-                                Icons.close_rounded,
-                                size: 18,
-                                color: AppColors.textTertiary,
-                              ),
-                              onPressed: () {
-                                searchController.clear();
-                                onQueryChanged('');
-                              },
-                            ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 13,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
                 ),
-              ],
+              ),
             ),
           ),
-          // Saw-tooth white divider.
-          CustomPaint(
-            size: const Size(double.infinity, 30),
-            painter: _SawtoothPainter(),
+          const SizedBox(width: 8),
+          _PlainHeaderButton(
+            icon: Icons.account_balance_wallet_rounded,
+            iconSize: 22,
+            color: AppColors.inkMuted,
+            tooltip: 'المحفظة',
+            onTap: onWalletTap,
           ),
+          const SizedBox(width: 8),
+          _CartButton(count: cartCount, onTap: onCartTap),
         ],
       ),
     );
   }
 }
 
-class _GlassCircleButton extends StatelessWidget {
-  const _GlassCircleButton({
+class _PlainHeaderButton extends StatelessWidget {
+  const _PlainHeaderButton({
     required this.icon,
+    required this.iconSize,
+    required this.color,
+    required this.tooltip,
     required this.onTap,
-    this.iconSize = 20,
-    this.tooltip,
   });
 
   final IconData icon;
-  final VoidCallback onTap;
   final double iconSize;
-  final String? tooltip;
+  final Color color;
+  final String tooltip;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final button = Material(
-      color: Colors.white.withValues(alpha: 0.2),
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: Center(
+              child: Icon(icon, size: iconSize, color: color),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CartButton extends StatelessWidget {
+  const _CartButton({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
           width: 40,
           height: 40,
-          child: Icon(icon, size: iconSize, color: Colors.white),
-        ),
-      ),
-    );
-    if (tooltip == null) return button;
-    return Tooltip(message: tooltip!, child: button);
-  }
-}
-
-class _SawtoothPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final sx = w / 1440;
-    final sy = h / 80;
-
-    final wavePaint1 = Paint()..color = Colors.white.withValues(alpha: 0.28);
-    final wave1 = Path()
-      ..moveTo(0, 36 * sy)
-      ..cubicTo(180 * sx, 62 * sy, 360 * sx, 18 * sy, 540 * sx, 42 * sy)
-      ..cubicTo(720 * sx, 66 * sy, 900 * sx, 14 * sy, 1080 * sx, 40 * sy)
-      ..cubicTo(1260 * sx, 66 * sy, 1380 * sx, 24 * sy, 1440 * sx, 32 * sy)
-      ..lineTo(w, h)
-      ..lineTo(0, h)
-      ..close();
-    canvas.drawPath(wave1, wavePaint1);
-
-    final wavePaint2 = Paint()..color = Colors.white;
-    final wave2 = Path()
-      ..moveTo(0, 52 * sy)
-      ..cubicTo(220 * sx, 20 * sy, 440 * sx, 68 * sy, 700 * sx, 44 * sy)
-      ..cubicTo(960 * sx, 20 * sy, 1200 * sx, 64 * sy, 1440 * sx, 46 * sy)
-      ..lineTo(w, h)
-      ..lineTo(0, h)
-      ..close();
-    canvas.drawPath(wave2, wavePaint2);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// ---------------------------------------------------------------------------
-// Food categories strip (design 0).
-// ---------------------------------------------------------------------------
-
-class _CategoriesSection extends StatelessWidget {
-  const _CategoriesSection({
-    required this.selectedCategory,
-    required this.onCategoryTap,
-  });
-
-  final String? selectedCategory;
-  final ValueChanged<String> onCategoryTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.surfaceLow)),
-      ),
-      padding: const EdgeInsets.only(top: 12, bottom: 14),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'التصنيفات الغذائية',
-                    style: AppTextStyles.titleSmall,
-                  ),
-                ),
-                InkWell(
-                  onTap: () => onCategoryTap('الكل'),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Text(
-                    'عرض الكل',
-                    style: AppTextStyles.label.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            shape: BoxShape.circle,
+            border: Border.fromBorderSide(
+              BorderSide(color: AppColors.borderMuted),
             ),
+            boxShadow: AppColors.cardShadow,
           ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 96,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
+          child: Material(
+            color: Colors.transparent,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              customBorder: const CircleBorder(),
+              child: const Center(
+                child: Icon(
+                  Icons.shopping_bag_outlined,
+                  size: 20,
+                  color: AppColors.primaryDark,
+                ),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              children: [
-                _CategoryTile(
-                  label: 'الكل',
-                  selected: selectedCategory == null,
-                  selectedStyle: true,
-                  onTap: () => onCategoryTap('الكل'),
-                ),
-                const SizedBox(width: 12),
-                for (final category in foodCategories) ...[
-                  _CategoryTile(
-                    label: category.label,
-                    image: category.image,
-                    selected: selectedCategory == category.id,
-                    onTap: () => onCategoryTap(category.id),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-              ],
             ),
           ),
-        ],
-      ),
+        ),
+        if (count > 0)
+          PositionedDirectional(
+            top: -4,
+            start: -4,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 16),
+              height: 16,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: AppColors.primaryDark,
+                borderRadius: BorderRadius.all(Radius.circular(999)),
+                boxShadow: AppColors.cardShadow,
+              ),
+              child: Text(
+                '$count',
+                style: _T.labelSm.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
 
-class _CategoryTile extends StatelessWidget {
-  const _CategoryTile({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-    this.image,
-    this.selectedStyle = false,
-  });
+// ---------------------------------------------------------------------------
+// Search bar — white, hairline border, r-16 (opens the search overlay).
+// ---------------------------------------------------------------------------
 
-  final String label;
-  final String? image;
-  final bool selected;
-  final bool selectedStyle;
+class _SearchBar extends StatelessWidget {
+  const _SearchBar({required this.onTap});
+
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final highlight = selectedStyle && selected;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Column(
-        children: [
-          Container(
-            width: 64,
-            height: 64,
+    return Padding(
+      // pt-3 pb-8 + wrapper pb-8 from the design → 12 above, 40 below.
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            height: 42,
+            padding: const EdgeInsetsDirectional.only(start: 14, end: 12),
             decoration: BoxDecoration(
-              color: highlight ? AppColors.primary : AppColors.surfaceLow,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(16),
-              border: selected && !selectedStyle
-                  ? Border.all(color: AppColors.primary, width: 2)
-                  : null,
-              boxShadow: highlight
-                  ? [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+              border: Border.all(color: AppColors.borderMuted),
+              boxShadow: AppColors.cardShadow,
             ),
-            clipBehavior: Clip.antiAlias,
-            child: image == null
-                ? const Icon(
-                    Icons.restaurant_rounded,
-                    size: 28,
-                    color: Colors.white,
-                  )
-                : AppImage(image!, fit: BoxFit.cover),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(
-              color: selected ? AppColors.primary : AppColors.textPrimary,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              fontSize: 12.5,
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.search_rounded,
+                  size: 20,
+                  color: AppColors.primaryDark,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'ابحث عن مطعم أو صنف (برجر، بيتزا، شاورما)...',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _T.bodySm.copyWith(color: AppColors.inkMuted),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// Top brands grid (design 0) — two stacked rows flowing horizontally.
+// خدماتنا — five service tiles with emoji, ground shadow and corner badges.
 // ---------------------------------------------------------------------------
 
-class _BrandsSection extends StatelessWidget {
-  const _BrandsSection({required this.onBrandTap});
+class _ServicesSection extends StatelessWidget {
+  const _ServicesSection({
+    required this.onRestaurantsTap,
+    required this.onServiceTap,
+  });
 
-  final ValueChanged<BrandTile> onBrandTap;
+  final VoidCallback onRestaurantsTap;
+  final ValueChanged<String> onServiceTap;
+
+  static const _services = [
+    (emoji: '🍔', size: 38.0, label: 'المطاعم', highlight: true, badge: null),
+    (emoji: '🛍️', size: 36.0, label: 'طلبات مارت', highlight: false, badge: 'سريع'),
+    (emoji: '🥦', size: 36.0, label: 'البقالة', highlight: false, badge: null),
+    (emoji: '🍽️', size: 36.0, label: 'DineOut', highlight: false, badge: 'جديد'),
+    (emoji: '💊', size: 36.0, label: 'صيدلية', highlight: false, badge: null),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final pairs = <Widget>[];
-    for (var i = 0; i < topBrands.length; i += 2) {
-      pairs.add(
-        Column(
-          children: [
-            _BrandTileWidget(brand: topBrands[i], onTap: () => onBrandTap(topBrands[i])),
-            const SizedBox(height: 14),
-            if (i + 1 < topBrands.length)
-              _BrandTileWidget(
-                brand: topBrands[i + 1],
-                onTap: () => onBrandTap(topBrands[i + 1]),
-              ),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.surfaceLow)),
-      ),
-      padding: const EdgeInsets.only(top: 4, bottom: 16),
+    return Padding(
+      padding: const EdgeInsets.only(top: 4), // pt-1
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.workspace_premium_rounded,
-                    size: 16,
-                    color: AppColors.primary,
-                  ),
+                Expanded(
+                  child: Text('خدماتنا', style: _T.headlineSmBold),
                 ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'أفضل العلامات التجارية',
-                    style: AppTextStyles.titleSmall,
-                  ),
-                ),
-                InkWell(
-                  onTap: () {},
-                  borderRadius: BorderRadius.circular(8),
-                  child: Row(
-                    children: [
-                      Text(
-                        'عرض الكل',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(width: 2),
-                      const Icon(
-                        Icons.chevron_right,
-                        size: 16,
-                        color: AppColors.primary,
-                      ),
-                    ],
-                  ),
+                GestureDetector(
+                  onTap: () => onServiceTap('باقي الخدمات'),
+                  child: Text('عرض الكل', style: _T.labelMdPrimary),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 12), // gap-3
           SizedBox(
-            height: 222,
-            child: ListView(
+            height: 120,
+            child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(
-                parent: AlwaysScrollableScrollPhysics(),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              children: [
-                for (final pair in pairs) ...[pair, const SizedBox(width: 14)],
-              ],
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              physics: const BouncingScrollPhysics(),
+              itemCount: _services.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12), // gap-3
+              itemBuilder: (context, index) {
+                final service = _services[index];
+                return _ServiceTile(
+                  emoji: service.emoji,
+                  emojiSize: service.size,
+                  label: service.label,
+                  highlight: service.highlight,
+                  badge: service.badge,
+                  onTap: service.label == 'المطاعم'
+                      ? onRestaurantsTap
+                      : () => onServiceTap(service.label),
+                );
+              },
             ),
           ),
         ],
@@ -933,1196 +609,375 @@ class _BrandsSection extends StatelessWidget {
   }
 }
 
-class _BrandTileWidget extends StatelessWidget {
-  const _BrandTileWidget({required this.brand, required this.onTap});
+class _ServiceTile extends StatelessWidget {
+  const _ServiceTile({
+    required this.emoji,
+    required this.emojiSize,
+    required this.label,
+    required this.highlight,
+    required this.badge,
+    required this.onTap,
+  });
 
-  final BrandTile brand;
+  final String emoji;
+  final double emojiSize;
+  final String label;
+  final bool highlight;
+  final String? badge;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 68,
+        width: 80,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Stack(
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  width: 68,
-                  height: 68,
-                  padding: const EdgeInsets.all(8),
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
-                    color: brand.color,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: brand.color.withValues(alpha: 0.2),
+                      color: highlight
+                          ? AppColors.borderMuted
+                          : AppColors.surfacePure,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
+                    boxShadow: AppColors.cardShadow,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        emoji,
+                        style: TextStyle(
+                          fontSize: emojiSize,
+                          height: 1,
+                          shadows: const [
+                            Shadow(
+                              color: Color(0x2E000000),
+                              offset: Offset(0, 6),
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4), // mt-1
+                      ImageFiltered(
+                        imageFilter: ui.ImageFilter.blur(
+                          sigmaX: 1.5,
+                          sigmaY: 1.5,
+                        ),
+                        child: Container(
+                          width: 36,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: const Color(0x1A000000),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  child: _BrandLogo(logoType: brand.logoType),
                 ),
-                if (brand.badge != null)
-                  Positioned(
+                if (badge != null)
+                  PositionedDirectional(
                     top: -6,
-                    right: -4,
+                    start: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 6,
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: brand.badgeColor ?? AppColors.primary,
-                        borderRadius: BorderRadius.circular(999),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
+                        color: badge == 'سريع'
+                            ? AppColors.primaryDark
+                            : AppColors.inkBadge,
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: AppColors.cardShadow,
                       ),
-                      child: Text(
-                        brand.badge!,
-                        style: const TextStyle(
-                          fontFamily: 'IBM Plex Sans Arabic',
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          height: 1.1,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              brand.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w700,
-                fontSize: 11,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              brand.time ?? '',
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textSecondary,
-                fontSize: 10,
-                height: 1.1,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Renders the colored monogram/logo of each brand tile.
-class _BrandLogo extends StatelessWidget {
-  const _BrandLogo({required this.logoType});
-
-  final String logoType;
-
-  @override
-  Widget build(BuildContext context) {
-    switch (logoType) {
-      case 'arches':
-        return CustomPaint(
-          size: const Size(52, 52),
-          painter: _ArchesPainter(),
-        );
-      case 'kfc':
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'KFC',
-              style: TextStyle(
-                fontFamily: 'IBM Plex Sans Arabic',
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.2,
-                color: Colors.white,
-                height: 1,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (_) {
-                return Container(
-                  width: 3.5,
-                  height: 3.5,
-                  margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                );
-              }),
-            ),
-          ],
-        );
-      case 'hut':
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CustomPaint(
-              size: const Size(44, 26),
-              painter: _HutRoofPainter(),
-            ),
-            const SizedBox(height: 3),
-            const Text(
-              'Pizza Hut',
-              style: TextStyle(
-                fontFamily: 'IBM Plex Sans Arabic',
-                fontSize: 8,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-                height: 1,
-              ),
-            ),
-          ],
-        );
-      case 'kudu':
-        return Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Text(
-              'kudu',
-              style: TextStyle(
-                fontFamily: 'IBM Plex Sans Arabic',
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFFFF8200),
-                height: 1,
-              ),
-            ),
-          ),
-        );
-      case 'albaik':
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 26,
-              height: 26,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: const Text('🍗', style: TextStyle(fontSize: 13)),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'ALBAIK',
-              style: TextStyle(
-                fontFamily: 'IBM Plex Sans Arabic',
-                fontSize: 8,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.4,
-                color: Color(0xFFFFC72C),
-                height: 1,
-              ),
-            ),
-          ],
-        );
-      case 'shawarmer':
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 26,
-              height: 26,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: const Text('🌯', style: TextStyle(fontSize: 13)),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'شاورمر',
-              style: TextStyle(
-                fontFamily: 'IBM Plex Sans Arabic',
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-                height: 1,
-              ),
-            ),
-          ],
-        );
-      case 'boutique':
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.lunch_dining_rounded,
-                size: 15,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'BOUTIQUE',
-              style: TextStyle(
-                fontFamily: 'IBM Plex Sans Arabic',
-                fontSize: 7.5,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.8,
-                color: Color(0xFFFFB59E),
-                height: 1,
-              ),
-            ),
-          ],
-        );
-      case 'maestro':
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 26,
-              height: 26,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: const Text('🍕', style: TextStyle(fontSize: 13)),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'MAESTRO',
-              style: TextStyle(
-                fontFamily: 'IBM Plex Sans Arabic',
-                fontSize: 8,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.4,
-                color: Color(0xFFFFC72C),
-                height: 1,
-              ),
-            ),
-          ],
-        );
-      default:
-        return const Icon(Icons.restaurant_rounded, color: Colors.white);
-    }
-  }
-}
-
-class _ArchesPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final sx = w / 108;
-    final sy = h / 108;
-    final paint = Paint()..color = const Color(0xFFFFC72C);
-    final path = Path()
-      ..moveTo(20 * sx, 88 * sy)
-      ..lineTo(20 * sx, 50 * sy)
-      ..cubicTo(20 * sx, 34 * sy, 32 * sx, 20 * sy, 46 * sx, 20 * sy)
-      ..cubicTo(54 * sx, 20 * sy, 60 * sx, 25 * sy, 64 * sx, 33 * sy)
-      ..cubicTo(68 * sx, 25 * sy, 74 * sx, 20 * sy, 82 * sx, 20 * sy)
-      ..cubicTo(96 * sx, 20 * sy, 108 * sx, 34 * sy, 108 * sx, 50 * sy)
-      ..lineTo(108 * sx, 88 * sy)
-      ..lineTo(90 * sx, 88 * sy)
-      ..lineTo(90 * sx, 52 * sy)
-      ..cubicTo(90 * sx, 41 * sy, 83 * sx, 36 * sy, 74 * sx, 36 * sy)
-      ..cubicTo(65 * sx, 36 * sy, 58 * sx, 41 * sy, 58 * sx, 52 * sy)
-      ..lineTo(58 * sx, 88 * sy)
-      ..lineTo(40 * sx, 88 * sy)
-      ..lineTo(40 * sx, 52 * sy)
-      ..cubicTo(40 * sx, 41 * sy, 33 * sx, 36 * sy, 24 * sx, 36 * sy)
-      ..cubicTo(15 * sx, 36 * sy, 10 * sx, 41 * sy, 10 * sx, 52 * sy)
-      ..lineTo(10 * sx, 88 * sy)
-      ..close();
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _HutRoofPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final sx = w / 100;
-    final sy = h / 60;
-
-    final white = Paint()..color = Colors.white;
-    final black = Paint()..color = Colors.black;
-
-    final path1 = Path()
-      ..moveTo(10 * sx, 42 * sy)
-      ..cubicTo(30 * sx, 38 * sy, 70 * sx, 38 * sy, 90 * sx, 42 * sy)
-      ..lineTo(95 * sx, 46 * sy)
-      ..cubicTo(65 * sx, 40 * sy, 35 * sx, 40 * sy, 5 * sx, 46 * sy)
-      ..close();
-    canvas.drawPath(path1, white);
-
-    final path2 = Path()
-      ..moveTo(28 * sx, 38 * sy)
-      ..lineTo(38 * sx, 18 * sy)
-      ..lineTo(62 * sx, 18 * sy)
-      ..lineTo(72 * sx, 38 * sy)
-      ..cubicTo(56 * sx, 34 * sy, 44 * sx, 34 * sy, 28 * sx, 38 * sy)
-      ..close();
-    canvas.drawPath(path2, white);
-
-    final path3 = Path()
-      ..moveTo(4 * sx, 48 * sy)
-      ..cubicTo(34 * sx, 43 * sy, 66 * sx, 43 * sy, 96 * sx, 48 * sy)
-      ..lineTo(92 * sx, 53 * sy)
-      ..cubicTo(64 * sx, 48 * sy, 36 * sx, 48 * sy, 8 * sx, 53 * sy)
-      ..close();
-    canvas.drawPath(path3, black);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// ---------------------------------------------------------------------------
-// Sort / view-toggle bar (design 0).
-// ---------------------------------------------------------------------------
-
-class _SortBar extends StatelessWidget {
-  const _SortBar({
-    required this.sortLabel,
-    required this.gridView,
-    required this.onSortTap,
-    required this.onViewToggle,
-  });
-
-  final String sortLabel;
-  final bool gridView;
-  final VoidCallback onSortTap;
-  final VoidCallback onViewToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-      child: Row(
-        children: [
-          Text(
-            'ترتيب حسب:',
-            style: AppTextStyles.bodySmall.copyWith(fontSize: 12.5),
-          ),
-          const SizedBox(width: 6),
-          Material(
-            color: AppColors.surfaceLow,
-            borderRadius: BorderRadius.circular(8),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: onSortTap,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.surfaceContainer),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      sortLabel,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textPrimary,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                    const SizedBox(width: 2),
-                    const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 16,
-                      color: AppColors.primary,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLow,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.surfaceContainer),
-            ),
-            child: Row(
-              children: [
-                _ViewToggleIcon(
-                  icon: Icons.view_agenda_rounded,
-                  active: !gridView,
-                  tooltip: 'عرض قائمة',
-                  onTap: onViewToggle,
-                ),
-                const SizedBox(width: 2),
-                _ViewToggleIcon(
-                  icon: Icons.grid_view_rounded,
-                  active: gridView,
-                  tooltip: 'عرض شبكي',
-                  onTap: onViewToggle,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ViewToggleIcon extends StatelessWidget {
-  const _ViewToggleIcon({
-    required this.icon,
-    required this.active,
-    required this.onTap,
-    this.tooltip,
-  });
-
-  final IconData icon;
-  final bool active;
-  final VoidCallback onTap;
-  final String? tooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    final button = Material(
-      color: active ? Colors.white : Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: SizedBox(
-          width: 32,
-          height: 32,
-          child: Icon(
-            icon,
-            size: 18,
-            color: active ? AppColors.primary : AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
-    if (tooltip == null) return button;
-    return Tooltip(message: tooltip!, child: button);
-  }
-}
-
-class _EmptyResults extends StatelessWidget {
-  const _EmptyResults();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 48),
-      child: Column(
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: AppColors.primarySoft,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.search_off_rounded,
-              size: 34,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text('لا توجد نتائج مطابقة', style: AppTextStyles.titleSmall),
-          const SizedBox(height: 6),
-          Text(
-            'جرّب كلمة بحث مختلفة أو غيّر التصفية',
-            style: AppTextStyles.bodySmall,
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Restaurant cards — list layout (design 0).
-// ---------------------------------------------------------------------------
-
-class _RestaurantCard extends StatelessWidget {
-  const _RestaurantCard({required this.restaurant, required this.onTap});
-
-  final Restaurant restaurant;
-  final VoidCallback onTap;
-
-  IconData get _footerIcon {
-    switch (restaurant.footerIcon) {
-      case 'fire':
-        return Icons.local_fire_department_rounded;
-      case 'bolt':
-        return Icons.bolt_rounded;
-      case 'offer':
-        return Icons.local_offer_rounded;
-      case 'ticket':
-        return Icons.confirmation_number_rounded;
-      case 'like':
-        return Icons.thumb_up_rounded;
-      case 'verified':
-        return Icons.verified_rounded;
-      case 'favorite':
-        return Icons.favorite_rounded;
-      default:
-        return Icons.local_offer_rounded;
-    }
-  }
-
-  Color get _footerColor {
-    switch (restaurant.footerTone) {
-      case FooterTone.green:
-        return AppColors.green;
-      case FooterTone.amber:
-        return AppColors.amber;
-      case FooterTone.orange:
-        return AppColors.primary;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final state = AppScope.of(context);
-    final isFavorite = state.isFavorite(restaurant.id);
-    final latin = latinBrandNames[restaurant.id];
-    final displayName = latin == null
-        ? restaurant.name
-        : '${restaurant.name} ($latin)';
-    final boxedFooter = restaurant.footerIcon == 'fire';
-
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.surfaceHigh.withValues(alpha: 0.6),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _RestaurantThumb(
-                restaurant: restaurant,
-                isFavorite: isFavorite,
-                width: 112,
-                height: 112,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 112),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      displayName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppTextStyles.titleSmall.copyWith(
-                                        fontSize: 15.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      restaurant.cuisine,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppTextStyles.bodySmall.copyWith(
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              _RatingChip(rating: restaurant.rating),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          _DeliveryMeta(restaurant: restaurant),
-                        ],
-                      ),
-                      if (boxedFooter)
-                        _BoxedFooter(
-                          icon: _footerIcon,
-                          color: _footerColor,
-                          text: restaurant.footerText ?? '',
-                        )
-                      else if (restaurant.footerText != null)
-                        Row(
-                          children: [
-                            Icon(
-                              _footerIcon,
-                              size: 14,
-                              color: _footerColor,
+                          Text(
+                            badge!,
+                            style: _T.labelSm.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              height: 1,
                             ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                restaurant.footerText!,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTextStyles.caption.copyWith(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 11,
-                                ),
-                              ),
+                          ),
+                          if (badge == 'سريع') ...[
+                            const SizedBox(width: 2),
+                            const Text(
+                              '🚀',
+                              style: TextStyle(fontSize: 9, height: 1),
                             ),
                           ],
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RestaurantThumb extends StatelessWidget {
-  const _RestaurantThumb({
-    required this.restaurant,
-    required this.isFavorite,
-    this.width = 112,
-    this.height = 112,
-    this.radius = 12,
-  });
-
-  final Restaurant restaurant;
-  final bool isFavorite;
-  final double width;
-  final double height;
-  final double radius;
-
-  @override
-  Widget build(BuildContext context) {
-    final state = AppScope.of(context, listen: false);
-    return SizedBox(
-      width: width,
-      height: height,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(radius),
-                color: AppColors.surfaceLow,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  AppImage(restaurant.cover, fit: BoxFit.cover),
-                  const DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          Colors.black54,
-                          Colors.transparent,
-                          Colors.transparent,
                         ],
                       ),
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
-          ),
-          if (restaurant.badge != null)
-            Positioned(
-              top: 6,
-              right: 6,
-              child: _CardBadge(
-                label: restaurant.badge!,
-                tone: restaurant.badgeTone,
-              ),
-            ),
-          Positioned(
-            left: 6,
-            bottom: 6,
-            child: Material(
-              color: Colors.white.withValues(alpha: 0.85),
-              shape: const CircleBorder(),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () => state.toggleFavorite(restaurant.id),
-                child: SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: Icon(
-                    isFavorite
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    size: 16,
-                    color: isFavorite
-                        ? AppColors.primary
-                        : AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CardBadge extends StatelessWidget {
-  const _CardBadge({required this.label, required this.tone});
-
-  final String label;
-  final BadgeTone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final (background, foreground) = switch (tone) {
-      BadgeTone.orange => (AppColors.primary, Colors.white),
-      BadgeTone.green => (AppColors.green, Colors.white),
-      BadgeTone.outline => (Colors.white, AppColors.primary),
-      BadgeTone.white => (Colors.white, AppColors.textPrimary),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(6),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.caption.copyWith(
-          color: foreground,
-          fontWeight: FontWeight.w700,
-          fontSize: 10,
-          height: 1.2,
-        ),
-      ),
-    );
-  }
-}
-
-class _RatingChip extends StatelessWidget {
-  const _RatingChip({required this.rating});
-
-  final double rating;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLow,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.surfaceContainer),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.star_rounded, size: 14, color: AppColors.amber),
-          const SizedBox(width: 2),
-          Text(
-            rating.toStringAsFixed(1),
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
-              fontSize: 11,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DeliveryMeta extends StatelessWidget {
-  const _DeliveryMeta({required this.restaurant});
-
-  final Restaurant restaurant;
-
-  @override
-  Widget build(BuildContext context) {
-    Widget delivery;
-    if (restaurant.deliveryFee == 0) {
-      delivery = Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.moped_rounded, size: 14, color: AppColors.green),
-          const SizedBox(width: 3),
-          Text(
-            'توصيل مجاني',
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.green,
-              fontWeight: FontWeight.w700,
-              fontSize: 11,
-            ),
-          ),
-        ],
-      );
-    } else if (restaurant.freeDeliveryAbove != null) {
-      delivery = Text(
-        'مجاني فوق ${restaurant.freeDeliveryAbove!.toStringAsFixed(0)} ر.س',
-        style: AppTextStyles.caption.copyWith(
-          color: AppColors.green,
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
-        ),
-      );
-    } else {
-      delivery = Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.moped_rounded,
-            size: 14,
-            color: AppColors.textSecondary,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            'توصيل: ${restaurant.deliveryFee.toStringAsFixed(0)} ر.س',
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.textSecondary,
-              fontSize: 11,
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        const Icon(
-          Icons.schedule_rounded,
-          size: 14,
-          color: AppColors.primary,
-        ),
-        const SizedBox(width: 3),
-        Text(
-          '${restaurant.deliveryMin} - ${restaurant.deliveryMax} دقيقة',
-          style: AppTextStyles.caption.copyWith(
-            color: AppColors.textSecondary,
-            fontSize: 11,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Container(
-          width: 3,
-          height: 3,
-          decoration: const BoxDecoration(
-            color: AppColors.textTertiary,
-            shape: BoxShape.circle,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Flexible(child: delivery),
-      ],
-    );
-  }
-}
-
-class _BoxedFooter extends StatelessWidget {
-  const _BoxedFooter({
-    required this.icon,
-    required this.color,
-    required this.text,
-  });
-
-  final IconData icon;
-  final Color color;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final parts = text.split(':');
-    final lead = parts.length > 1 ? '${parts.first}:' : '';
-    final highlight = parts.length > 1 ? parts.sublist(1).join(':').trim() : text;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLow.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.surfaceLow),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 15, color: color),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: lead,
-                    style: AppTextStyles.caption.copyWith(fontSize: 11),
-                  ),
-                  TextSpan(
-                    text: highlight,
-                    style: AppTextStyles.caption.copyWith(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
+            const SizedBox(height: 8), // gap-2
+            Text(
+              label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 4),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'طلب',
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
-                ),
+              textAlign: TextAlign.center,
+              style: _T.headlineSm.copyWith(
+                fontSize: 13,
+                height: 16 / 13,
+                fontWeight: FontWeight.w700,
               ),
-              const Icon(Icons.chevron_right, size: 14, color: AppColors.primary),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 // ---------------------------------------------------------------------------
-// Restaurant cards — compact grid layout.
+// YALLA30 banner — crimson→orange gradient with burger medallion + pager dots.
 // ---------------------------------------------------------------------------
 
-class _RestaurantGrid extends StatelessWidget {
-  const _RestaurantGrid({required this.restaurants, required this.onOpen});
+class _PromoBanner extends StatelessWidget {
+  const _PromoBanner({required this.onApply});
 
-  final List<Restaurant> restaurants;
-  final ValueChanged<Restaurant> onOpen;
+  final VoidCallback onApply;
 
   @override
   Widget build(BuildContext context) {
-    final rows = <Widget>[];
-    for (var i = 0; i < restaurants.length; i += 2) {
-      rows.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _RestaurantGridCard(
-                  restaurant: restaurants[i],
-                  onTap: () => onOpen(restaurants[i]),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: i + 1 < restaurants.length
-                    ? _RestaurantGridCard(
-                        restaurant: restaurants[i + 1],
-                        onTap: () => onOpen(restaurants[i + 1]),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(children: rows),
-    );
-  }
-}
-
-class _RestaurantGridCard extends StatelessWidget {
-  const _RestaurantGridCard({required this.restaurant, required this.onTap});
-
-  final Restaurant restaurant;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final state = AppScope.of(context);
-    final isFavorite = state.isFavorite(restaurant.id);
-    final latin = latinBrandNames[restaurant.id];
-    final displayName = latin == null
-        ? restaurant.name
-        : '${restaurant.name} ($latin)';
-
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.surfaceHigh.withValues(alpha: 0.6),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+      // mt-1 + pt-2 → 12 below the services row.
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Container(
+        height: 114,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            // bg-gradient-to-l: from-primary (right) to-primary-container (left).
+            begin: Alignment.centerRight,
+            end: Alignment.centerLeft,
+            colors: [AppColors.primaryDark, Color(0xFFFF591B)],
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: AppColors.cardShadow,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
             children: [
-              SizedBox(
-                height: 118,
-                width: double.infinity,
-                child: _RestaurantThumb(
-                  restaurant: restaurant,
-                  isFavorite: isFavorite,
-                  width: double.infinity,
-                  height: 118,
-                  radius: 15,
+              // Deco glow circle, -top-12 -start-12.
+              PositionedDirectional(
+                top: -48,
+                start: -48,
+                child: ImageFiltered(
+                  imageFilter: ui.ImageFilter.blur(
+                    sigmaX: 24,
+                    sigmaY: 24,
+                  ),
+                  child: Container(
+                    width: 128,
+                    height: 128,
+                    decoration: const BoxDecoration(
+                      color: Color(0x1AFFFFFF),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                padding: const EdgeInsets.all(12), // p-3
+                child: Row(
                   children: [
-                    Text(
-                      displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.label.copyWith(fontSize: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // عرض حصري chip.
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: const BoxDecoration(
+                              color: Color(0x33FFFFFF),
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(999)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.local_fire_department_outlined,
+                                  size: 13,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'عرض حصري',
+                                  style: _T.labelSm.copyWith(
+                                    color: Colors.white,
+                                    height: 1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 4), // gap-1
+                          Text(
+                            'خصم 30% على أول طلبين!',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: _T.headlineSm.copyWith(
+                              fontSize: 16,
+                              height: 20 / 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                'كود:',
+                                style: _T.labelSm.copyWith(
+                                  fontSize: 11,
+                                  color: Colors.white.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6), // gap-1.5
+                              GestureDetector(
+                                onTap: onApply,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface,
+                                    borderRadius: BorderRadius.circular(6),
+                                    boxShadow: AppColors.cardShadow,
+                                  ),
+                                  child: Text(
+                                    'YALLA30',
+                                    style: _T.labelSm.copyWith(
+                                      fontSize: 11,
+                                      color: AppColors.primaryDark,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.6,
+                                      height: 14 / 11,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4), // ms-1
+                              Material(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(8),
+                                clipBehavior: Clip.antiAlias,
+                                child: InkWell(
+                                  onTap: onApply,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'اطلب الآن',
+                                          style: _T.labelSm.copyWith(
+                                            fontSize: 11,
+                                            color: AppColors.primaryDark,
+                                            fontWeight: FontWeight.w700,
+                                            height: 14 / 11,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 2),
+                                        Transform.scale(
+                                          scaleX: -1, // rtl:-scale-x-100
+                                          child: const Icon(
+                                            Icons.arrow_forward,
+                                            size: 13,
+                                            color: AppColors.primaryDark,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      restaurant.cuisine,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.caption.copyWith(fontSize: 10.5),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
+                    const SizedBox(width: 8), // gap-2
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.star_rounded,
-                          size: 13,
-                          color: AppColors.amber,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          restaurant.rating.toStringAsFixed(1),
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 11,
+                        Container(
+                          width: 80,
+                          height: 80,
+                          padding: const EdgeInsets.all(2), // p-0.5
+                          decoration: const BoxDecoration(
+                            color: Color(0x33FFFFFF), // white/20
+                            shape: BoxShape.circle,
+                            boxShadow: AppColors.pillShadow,
+                          ),
+                          child: ClipOval(
+                            child: AppImage(
+                              'assets/images/yalla/y_pure_promo.jpg',
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
-                        const Spacer(),
-                        Icon(
-                          Icons.schedule_rounded,
-                          size: 12,
-                          color: restaurant.deliveryFee == 0
-                              ? AppColors.green
-                              : AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          restaurant.deliveryFee == 0
-                              ? 'توصيل مجاني'
-                              : '${restaurant.deliveryMin}-${restaurant.deliveryMax} د',
-                          style: AppTextStyles.caption.copyWith(
-                            color: restaurant.deliveryFee == 0
-                                ? AppColors.green
-                                : AppColors.textSecondary,
-                            fontSize: 10.5,
-                            fontWeight: restaurant.deliveryFee == 0
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                          ),
+                        const SizedBox(height: 6), // gap-1.5
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 4,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                borderRadius:
+                                    BorderRadius.all(Radius.circular(999)),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Container(
+                              width: 4,
+                              height: 4,
+                              decoration: const BoxDecoration(
+                                color: Color(0x66FFFFFF), // white/40
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Container(
+                              width: 4,
+                              height: 4,
+                              decoration: const BoxDecoration(
+                                color: Color(0x66FFFFFF),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -2138,84 +993,1138 @@ class _RestaurantGridCard extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Floating dark pill — "عرض على الخريطة" / "تصفية" (design 0).
+// عروض حصرية اليوم — carousel of offer cards with a 3-col discount grid.
 // ---------------------------------------------------------------------------
 
-class _FloatingFilterPill extends StatelessWidget {
-  const _FloatingFilterPill({required this.onMapTap, required this.onFilterTap});
+class _OffersSection extends StatelessWidget {
+  const _OffersSection({
+    required this.restaurants,
+    required this.isFavorite,
+    required this.onToggleFavorite,
+    required this.onOpenRestaurant,
+    required this.onAddItem,
+  });
 
-  final VoidCallback onMapTap;
-  final VoidCallback onFilterTap;
+  final List<Restaurant> restaurants;
+  final bool Function(String restaurantId) isFavorite;
+  final ValueChanged<String> onToggleFavorite;
+  final ValueChanged<Restaurant> onOpenRestaurant;
+  final void Function(Restaurant restaurant, MenuItem item) onAddItem;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        boxShadow: AppColors.pillGlow,
-        borderRadius: BorderRadius.all(Radius.circular(999)),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(999),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.charcoal.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 24), // mt-space-lg
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.map_rounded,
-                  size: 20,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'عرض على الخريطة',
-                  style: AppTextStyles.label.copyWith(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+                Container(
+                  width: 10,
+                  height: 24,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primaryDark,
+                    borderRadius: BorderRadius.all(Radius.circular(999)),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
+                Expanded(child: Text('عروض حصرية اليوم', style: _T.headlineSm)),
+                // Timer chip.
                 Container(
-                  width: 1,
-                  height: 16,
-                  color: Colors.white.withValues(alpha: 0.2),
-                ),
-                const SizedBox(width: 12),
-                InkWell(
-                  onTap: onFilterTap,
-                  borderRadius: BorderRadius.circular(999),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppColors.borderMuted),
+                  ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.filter_list_rounded,
-                        size: 18,
-                        color: Colors.white.withValues(alpha: 0.9),
+                      const Icon(
+                        Icons.timer_outlined,
+                        size: 16,
+                        color: AppColors.primaryDark,
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'تصفية',
-                        style: AppTextStyles.label.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      const SizedBox(width: 4),
+                      Text('ينتهي خلال ساعتين', style: _T.labelMdPrimary),
                     ],
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 12), // gap-3
+          // Content-height horizontal strip (the design strip sizes to its
+          // tallest card) — no fixed height means no vertical overflow.
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < restaurants.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 16), // gap-4
+                  _OfferCard(
+                    restaurant: restaurants[i],
+                    items: [
+                      for (final itemId in offerItemIds[restaurants[i].id]!)
+                        menuItemById(restaurants[i], itemId),
+                    ],
+                    isFavorite: isFavorite(restaurants[i].id),
+                    onToggleFavorite: () => onToggleFavorite(restaurants[i].id),
+                    onOpen: () => onOpenRestaurant(restaurants[i]),
+                    onAddItem: (item) => onAddItem(restaurants[i], item),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OfferCard extends StatelessWidget {
+  const _OfferCard({
+    required this.restaurant,
+    required this.items,
+    required this.isFavorite,
+    required this.onToggleFavorite,
+    required this.onOpen,
+    required this.onAddItem,
+  });
+
+  final Restaurant restaurant;
+  final List<MenuItem> items;
+  final bool isFavorite;
+  final VoidCallback onToggleFavorite;
+  final VoidCallback onOpen;
+  final ValueChanged<MenuItem> onAddItem;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onOpen,
+      child: Container(
+        width: 320,
+        padding: const EdgeInsets.all(14), // p-3.5
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.surfacePure),
+          boxShadow: AppColors.cardShadow,
         ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Logo box 64×64, r-12, hairline border.
+                Container(
+                  width: 64,
+                  height: 64,
+                  padding: const EdgeInsets.all(2), // p-0.5
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.surfacePure),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: AppImage(restaurant.logo, fit: BoxFit.cover),
+                  ),
+                ),
+                const SizedBox(width: 10), // gap-2.5
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              restaurant.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: _T.headlineSm.copyWith(
+                                fontSize: 16,
+                                height: 20 / 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6), // gap-1.5
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primaryDark,
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(8)),
+                              boxShadow: AppColors.cardShadow,
+                            ),
+                            child: Text(
+                              restaurant.badge ?? '',
+                              style: _T.labelSm.copyWith(
+                                fontSize: 11,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                height: 13 / 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4), // gap-1
+                      Text(
+                        restaurant.cuisine,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _T.bodySm.copyWith(
+                          fontSize: 11,
+                          color: AppColors.inkMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 2), // gap-1 + pt-0.5
+                      Row(
+                        children: [
+                          // Rating pill.
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.tertiarySoft,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.star_rounded,
+                                  size: 13,
+                                  color: AppColors.tertiary,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  restaurant.rating.toStringAsFixed(1),
+                                  style: _T.bodySm.copyWith(
+                                    fontSize: 11,
+                                    color: AppColors.tertiary,
+                                    fontWeight: FontWeight.w700,
+                                    height: 13 / 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8), // gap-2
+                          Icon(
+                            Icons.moped_outlined,
+                            size: 14,
+                            color: AppColors.primaryDark,
+                          ),
+                          const SizedBox(width: 4), // gap-1
+                          Flexible(
+                            child: Text(
+                              '${restaurant.deliveryMin}-'
+                              '${restaurant.deliveryMax} دقيقة',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: _T.bodySm.copyWith(
+                                fontSize: 11,
+                                color: AppColors.inkMuted,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              restaurant.deliveryFee == 0
+                                  ? 'توصيل مجاني'
+                                  : 'توصيل ${money(restaurant.deliveryFee)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: _T.bodySm.copyWith(
+                                fontSize: 11,
+                                color: restaurant.deliveryFee == 0
+                                    ? AppColors.tertiary
+                                    : AppColors.inkMuted,
+                                fontWeight: restaurant.deliveryFee == 0
+                                    ? FontWeight.w600
+                                    : FontWeight.w700,
+                                height: 13 / 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Favorite toggle 28×28.
+                GestureDetector(
+                  onTap: onToggleFavorite,
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: const BoxDecoration(
+                      color: AppColors.surfaceLowPure,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isFavorite
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      size: 16,
+                      color: isFavorite
+                          ? AppColors.primaryDark
+                          : AppColors.ink,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12), // gap-3
+            // Discount grid.
+            Container(
+              padding: const EdgeInsets.only(top: 10), // pt-2.5
+              decoration: const BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: AppColors.surfacePure),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'أبرز عروض الخصم',
+                        style: _T.labelMd.copyWith(
+                          color: AppColors.inkMuted,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        '${items.length} أصناف مخفضة',
+                        style: _T.bodySm.copyWith(
+                          fontSize: 11,
+                          color: AppColors.primaryDark,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8), // mb-2
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (var i = 0; i < items.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 8), // gap-2
+                        Expanded(
+                          child: _OfferItemCard(
+                            item: items[i],
+                            onAdd: () => onAddItem(items[i]),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OfferItemCard extends StatelessWidget {
+  const _OfferItemCard({required this.item, required this.onAdd});
+
+  final MenuItem item;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(8), // p-2
+      decoration: BoxDecoration(
+        color: AppColors.surfaceLowPure.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.surfacePure),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  height: 80,
+                  width: double.infinity,
+                  child: AppImage(item.image, fit: BoxFit.cover),
+                ),
+              ),
+              PositionedDirectional(
+                bottom: 4,
+                end: 4, // bottom-1 end-1
+                child: _AddButton(size: 28, iconSize: 16, onTap: onAdd),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8), // mb-2
+          Text(
+            item.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: _T.bodySm.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2), // mt-0.5
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                money(item.price),
+                style: _T.headlineSm.copyWith(
+                  fontSize: 13,
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 4), // gap-1
+              if (item.oldPrice != null)
+                Flexible(
+                  child: Text(
+                    money(item.oldPrice!),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _T.bodySm.copyWith(
+                      fontSize: 10,
+                      color: AppColors.inkMuted,
+                      decoration: TextDecoration.lineThrough,
+                      decorationColor: AppColors.inkMuted,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// مطاعم بالقرب منك — hero cards with status badges, moped pill and rating.
+// ---------------------------------------------------------------------------
+
+class _NearbySection extends StatelessWidget {
+  const _NearbySection({
+    required this.sectionKey,
+    required this.restaurants,
+    required this.isFavorite,
+    required this.onToggleFavorite,
+    required this.onOpenRestaurant,
+    required this.onSeeAll,
+  });
+
+  final GlobalKey sectionKey;
+  final List<Restaurant> restaurants;
+  final bool Function(String restaurantId) isFavorite;
+  final ValueChanged<String> onToggleFavorite;
+  final ValueChanged<Restaurant> onOpenRestaurant;
+  final VoidCallback onSeeAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0), // mt-space-lg px-margin
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 24,
+                decoration: const BoxDecoration(
+                  color: AppColors.primaryDark,
+                  borderRadius: BorderRadius.all(Radius.circular(999)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('مطاعم بالقرب منك', style: _T.headlineSm),
+              ),
+              GestureDetector(
+                onTap: onSeeAll,
+                child: Text('عرض الكل (42)', style: _T.labelMdPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12), // gap-3
+          for (var i = 0; i < restaurants.length; i++) ...[
+            if (i > 0) const SizedBox(height: 16), // gap-4
+            _NearbyCard(
+              key: i == 0 ? sectionKey : null,
+              restaurant: restaurants[i],
+              isFavorite: isFavorite(restaurants[i].id),
+              onToggleFavorite: () =>
+                  onToggleFavorite(restaurants[i].id),
+              onOpen: () => onOpenRestaurant(restaurants[i]),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _NearbyCard extends StatelessWidget {
+  const _NearbyCard({
+    super.key,
+    required this.restaurant,
+    required this.isFavorite,
+    required this.onToggleFavorite,
+    required this.onOpen,
+  });
+
+  final Restaurant restaurant;
+  final bool isFavorite;
+  final VoidCallback onToggleFavorite;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasLogoOverlay = restaurant.id == 'shawarmer';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surfacePure),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onOpen,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 176, // h-44
+                width: double.infinity,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned.fill(
+                      child: AppImage(restaurant.cover, fit: BoxFit.cover),
+                    ),
+                    // Status badges — top-3 start-3.
+                    PositionedDirectional(
+                      top: 12,
+                      start: 12,
+                      child: Row(
+                        children: [
+                          _statusBadge(
+                            'مفتوح الآن',
+                            bg: AppColors.tertiary,
+                            fg: Colors.white,
+                            weight: FontWeight.w600,
+                          ),
+                          if (restaurant.badge != null &&
+                              restaurant.badge != 'مفتوح الآن') ...[
+                            const SizedBox(width: 8),
+                            if (restaurant.badgeTone == BadgeTone.outline)
+                              _statusBadge(
+                                restaurant.badge!,
+                                bg: AppColors.surface,
+                                fg: AppColors.primaryDark,
+                                weight: FontWeight.w700,
+                                border: AppColors.borderMuted,
+                              )
+                            else
+                              _statusBadge(
+                                restaurant.badge!,
+                                bg: AppColors.primaryDark,
+                                fg: Colors.white,
+                                weight: FontWeight.w700,
+                              ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    // Favorite — top-3 end-3, 36×36 frosted circle.
+                    PositionedDirectional(
+                      top: 12,
+                      end: 12,
+                      child: GestureDetector(
+                        onTap: onToggleFavorite,
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.surfacePure),
+                          ),
+                          child: Icon(
+                            isFavorite
+                                ? Icons.favorite_rounded
+                                : Icons.favorite_border_rounded,
+                            size: 20,
+                            color: isFavorite
+                                ? AppColors.primaryDark
+                                : AppColors.ink,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Moped + distance pill — bottom-3 start-3.
+                    PositionedDirectional(
+                      bottom: 12,
+                      start: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.95),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: AppColors.surfacePure),
+                          boxShadow: AppColors.cardShadow,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.moped_outlined,
+                              size: 16,
+                              color: AppColors.primaryDark,
+                            ),
+                            const SizedBox(width: 6), // gap-1.5
+                            Text(
+                              '${restaurant.deliveryMin} - '
+                              '${restaurant.deliveryMax} دقيقة',
+                              style: _T.labelMd,
+                            ),
+                            const SizedBox(width: 4), // mx-1
+                            Container(
+                              width: 4,
+                              height: 4,
+                              decoration: const BoxDecoration(
+                                color: AppColors.separatorDot,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(_km(restaurant.distanceKm), style: _T.labelMd),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Shawarmer logo — absolute -bottom-5 left-4 (physical).
+                    if (hasLogoOverlay)
+                      Positioned(
+                        bottom: -20,
+                        left: 16,
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          padding: const EdgeInsets.all(4), // p-1
+                          decoration: const BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.all(
+                              Radius.circular(12),
+                            ),
+                            border: Border.fromBorderSide(
+                              BorderSide(color: AppColors.surfacePure),
+                            ),
+                            boxShadow: AppColors.pillShadow,
+                          ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.borderMuted),
+                            ),
+                            child: const Center(
+                              child: _ShawarmaMark(
+                                color: AppColors.primaryDark,
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16), // p-4
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            restaurant.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: _T.headlineMdBold,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.tertiarySoft,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 16,
+                                color: AppColors.tertiary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                restaurant.rating.toStringAsFixed(1),
+                                style: _T.labelMd.copyWith(
+                                  color: AppColors.tertiary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _reviewChip(restaurant.reviewCount),
+                                style: _T.labelSm.copyWith(
+                                  color: AppColors.inkMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8), // gap-2
+                    Text(restaurant.cuisine, style: _T.bodyMdMuted),
+                    const SizedBox(height: 8), // pt-2
+                    Row(
+                      children: [
+                        if (restaurant.deliveryFee == 0)
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.local_shipping_outlined,
+                                size: 18,
+                                color: AppColors.tertiary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'توصيل مجاني',
+                                style: _T.labelMd.copyWith(
+                                  color: AppColors.tertiary,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.payments_rounded,
+                                size: 18,
+                                color: AppColors.inkMuted,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'توصيل: ${money(restaurant.deliveryFee)}',
+                                style: _T.labelMdMuted,
+                              ),
+                            ],
+                          ),
+                        const SizedBox(width: 16), // gap-4
+                        Container(
+                          width: 4,
+                          height: 4,
+                          decoration: const BoxDecoration(
+                            color: AppColors.separatorDot,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.shopping_bag_outlined,
+                              size: 18,
+                              color: AppColors.inkMuted,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'الحد الأدنى: '
+                              '${money(restaurant.minimumOrder)}',
+                              style: _T.labelMdMuted,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statusBadge(
+    String label, {
+    required Color bg,
+    required Color fg,
+    required FontWeight weight,
+    Color? border,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+        border: border == null ? null : Border.all(color: border),
+        boxShadow: AppColors.cardShadow,
+      ),
+      child: Text(
+        label,
+        style: _T.labelSm.copyWith(color: fg, fontWeight: weight),
+      ),
+    );
+  }
+}
+
+/// The shawarma mark from the design's inline SVG (شاورمر logo box).
+class _ShawarmaMark extends StatelessWidget {
+  const _ShawarmaMark({required this.color, this.size = 28});
+
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.square(size),
+      painter: _ShawarmaMarkPainter(color),
+    );
+  }
+}
+
+class _ShawarmaMarkPainter extends CustomPainter {
+  _ShawarmaMarkPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    canvas.save();
+    canvas.scale(size.width / 24, size.height / 24);
+
+    // Outer wrap — M12 2 C… (the full design path).
+    final outer = Path()
+      ..moveTo(12, 2)
+      ..cubicTo(7.5, 2, 4, 4.5, 4, 8)
+      ..cubicTo(4, 10.2, 5.4, 12.2, 7.6, 13.3)
+      ..lineTo(6, 21)
+      ..lineTo(9, 19.5)
+      ..lineTo(12, 22)
+      ..lineTo(15, 19.5)
+      ..lineTo(18, 22)
+      ..lineTo(16.4, 14.3)
+      ..cubicTo(18.6, 12.2, 20, 10.2, 20, 8)
+      ..cubicTo(20, 4.5, 16.5, 2, 12, 2)
+      ..close();
+
+    // Face cutout — M12 4 c… l….
+    final inner = Path()
+      ..moveTo(12, 4)
+      ..cubicTo(15.3, 4, 18, 5.8, 18, 8)
+      ..cubicTo(18, 9.5, 16.7, 10.8, 14.7, 11.5)
+      ..lineTo(14, 11.7)
+      ..lineTo(14.7, 15.2)
+      ..lineTo(13, 13.8)
+      ..lineTo(12, 13)
+      ..lineTo(11, 12.2)
+      ..lineTo(9.3, 13.6)
+      ..lineTo(10, 10.1)
+      ..lineTo(9.3, 9.9)
+      ..cubicTo(8.3, 10.8, 7, 9.5, 7, 8)
+      ..cubicTo(7, 5.8, 9.7, 4, 13, 4)
+      ..close();
+
+    canvas.drawPath(outer, paint);
+    // The face subpath is a cutout in the SVG — punch it out in white.
+    canvas.drawPath(
+      inner,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true,
+    );
+    // Eyes.
+    canvas.drawCircle(const Offset(9.5, 8), 1, paint);
+    canvas.drawCircle(const Offset(14.5, 8), 1, paint);
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_ShawarmaMarkPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+// ---------------------------------------------------------------------------
+// الأكثر طلباً هذا الأسبوع — 2-col grid of best-selling dishes.
+// ---------------------------------------------------------------------------
+
+class _MostOrderedSection extends StatelessWidget {
+  const _MostOrderedSection({
+    required this.entries,
+    required this.onOpenRestaurant,
+    required this.onAddItem,
+    required this.onSeeMore,
+  });
+
+  final List<(Restaurant, MenuItem, String)> entries;
+  final ValueChanged<Restaurant> onOpenRestaurant;
+  final void Function(Restaurant restaurant, MenuItem item) onAddItem;
+  final VoidCallback onSeeMore;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0), // mt-space-lg
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 24,
+                decoration: const BoxDecoration(
+                  color: AppColors.primaryDark,
+                  borderRadius: BorderRadius.all(Radius.circular(999)),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'الأكثر طلباً هذا الأسبوع',
+                  style: _T.headlineSm,
+                ),
+              ),
+              GestureDetector(
+                onTap: onSeeMore,
+                child: Text('المزيد', style: _T.labelMdPrimary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12), // gap-3
+          for (var i = 0; i < entries.length; i += 2)
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: i + 2 < entries.length ? 12 : 0, // gap-3
+              ),
+              child: Builder(
+                builder: (context) {
+                  Widget card(int index) => _MostOrderedCard(
+                        entry: entries[index],
+                        onOpen: () =>
+                            onOpenRestaurant(entries[index].$1),
+                        onAdd: () => onAddItem(
+                          entries[index].$1,
+                          entries[index].$2,
+                        ),
+                      );
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: card(i)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: i + 1 < entries.length
+                            ? card(i + 1)
+                            : const SizedBox(),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MostOrderedCard extends StatelessWidget {
+  const _MostOrderedCard({
+    required this.entry,
+    required this.onOpen,
+    required this.onAdd,
+  });
+
+  final (Restaurant, MenuItem, String) entry;
+  final VoidCallback onOpen;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final (restaurant, item, subtitle) = entry;
+
+    return GestureDetector(
+      onTap: onOpen,
+      child: Container(
+        padding: const EdgeInsets.all(12), // p-3
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.surfacePure),
+          boxShadow: AppColors.cardShadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 1,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: AppImage(item.image, fit: BoxFit.cover),
+                    ),
+                  ),
+                  PositionedDirectional(
+                    bottom: 8,
+                    end: 8, // bottom-2 end-2
+                    child: _AddButton(size: 36, iconSize: 20, onTap: onAdd),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8), // mb-2
+            Text(
+              item.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _T.labelLg,
+            ),
+            const SizedBox(height: 4), // gap-1
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: _T.bodySm.copyWith(color: AppColors.inkMuted),
+            ),
+            const SizedBox(height: 4), // mt-1
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  money(item.price),
+                  style: _T.headlineSm.copyWith(
+                    color: AppColors.primaryDark,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (item.oldPrice != null)
+                  Text(
+                    money(item.oldPrice!),
+                    style: _T.bodySm.copyWith(
+                      color: AppColors.inkMuted,
+                      decoration: TextDecoration.lineThrough,
+                      decorationColor: AppColors.inkMuted,
+                    ),
+                  )
+                else if (item.badge != null)
+                  Text(
+                    item.badge!,
+                    style: _T.labelSm.copyWith(
+                      color: item.badge == 'الأعلى تقييماً'
+                          ? AppColors.tertiary
+                          : AppColors.inkMuted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Round primary "+"" button shared by item cards.
+class _AddButton extends StatelessWidget {
+  const _AddButton({
+    required this.size,
+    required this.iconSize,
+    required this.onTap,
+  });
+
+  final double size;
+  final double iconSize;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: const BoxDecoration(
+          color: AppColors.primaryDark,
+          shape: BoxShape.circle,
+          boxShadow: AppColors.pillShadow,
+        ),
+        child: Icon(Icons.add_rounded, size: iconSize, color: Colors.white),
       ),
     );
   }

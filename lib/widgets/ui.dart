@@ -444,43 +444,28 @@ class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
+  /// Pure-white design bar: fixed white, hairline top border, soft up-light.
   static const _items = [
-    (
-      icon: Icons.home_outlined,
-      activeIcon: Icons.home_rounded,
-      label: 'الرئيسية',
-    ),
-    (
-      icon: Icons.search_rounded,
-      activeIcon: Icons.search_rounded,
-      label: 'البحث',
-    ),
-    (
-      icon: Icons.receipt_long_outlined,
-      activeIcon: Icons.receipt_long_rounded,
-      label: 'طلباتي',
-    ),
-    (
-      icon: Icons.person_outline_rounded,
-      activeIcon: Icons.person_rounded,
-      label: 'حسابي',
-    ),
+    (icon: Icons.explore_outlined, label: 'استكشف'),
+    (icon: Icons.favorite_border_rounded, label: 'المفضلة'),
+    (icon: Icons.receipt_long_outlined, label: 'طلباتي'),
+    (icon: Icons.person_outline_rounded, label: 'حسابي'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
+      height: 80,
+      decoration: const BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: AppColors.border),
+        border: Border(
+          top: BorderSide(color: AppColors.surfacePure, width: 1),
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
-            blurRadius: 30,
-            offset: const Offset(0, 12),
+            color: Color(0x0D000000),
+            blurRadius: 12,
+            offset: Offset(0, -2),
           ),
         ],
       ),
@@ -491,38 +476,27 @@ class AppBottomNav extends StatelessWidget {
           return Expanded(
             child: InkWell(
               onTap: () => onTap(index),
-              borderRadius: BorderRadius.circular(18),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 260),
-                curve: Curves.easeOutCubic,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: active ? AppColors.primarySoft : Colors.transparent,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      active ? item.activeIcon : item.icon,
-                      size: 22,
-                      color: active
-                          ? AppColors.primaryDark
-                          : AppColors.textTertiary,
+              borderRadius: BorderRadius.circular(14),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    item.icon,
+                    size: 24,
+                    color: active ? AppColors.primaryDark : AppColors.inkMuted,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    item.label,
+                    style: TextStyle(
+                      fontFamily: 'IBM Plex Sans Arabic',
+                      fontSize: 12,
+                      height: 16 / 12,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                      color: active ? AppColors.primaryDark : AppColors.inkMuted,
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      item.label,
-                      style: AppTextStyles.caption.copyWith(
-                        color: active
-                            ? AppColors.primaryDark
-                            : AppColors.textSecondary,
-                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           );

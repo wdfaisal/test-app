@@ -39,6 +39,36 @@ class AppColors {
   static const amberDeep = Color(0xFFD97706);
   static const danger = Color(0xFFEF4444);
 
+  // Pure-white home design tokens (computed-style truth from the Stitch
+  // "الرئيسية (المظهر الأبيض النقي)" export).
+  static const ink = Color(0xFF1A1C1C); // on-surface
+  static const inkMuted = Color(0xFF5B5F63); // secondary text
+  static const tertiary = Color(0xFF006C4A); // rating / open-now green
+  static const tertiarySoft = Color(0x1A006C4A); // rgba(0,108,74,.1)
+  static const borderMuted = Color(0xFFE5E7EB); // border-muted
+  static const surfaceLowPure = Color(0xFFF3F3F4); // surface-container-low
+  static const surfacePure = Color(0xFFEEEEEE); // surface-container
+  static const separatorDot = Color(0xFFC3C7CC); // secondary-fixed-dim
+  static const inkBadge = Color(0xFF1F2024); // DineOut "جديد" badge
+
+  /// Soft elevation used by pure-design cards (Tailwind shadow-sm).
+  static const List<BoxShadow> cardShadow = [
+    BoxShadow(
+      color: Color(0x0D000000),
+      blurRadius: 4,
+      offset: Offset(0, 2),
+    ),
+  ];
+
+  /// Floating pill shadows (Tailwind shadow-md).
+  static const List<BoxShadow> pillShadow = [
+    BoxShadow(
+      color: Color(0x1A000000),
+      blurRadius: 8,
+      offset: Offset(0, 4),
+    ),
+  ];
+
   // Signature orange glow used by floating dark pills.
   static const List<BoxShadow> pillGlow = [
     BoxShadow(
