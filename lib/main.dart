@@ -9,17 +9,17 @@ import 'state/app_state.dart';
 import 'theme/app_theme.dart';
 
 void main() {
-  runApp(const LuqmaApp());
+  runApp(const YallaApp());
 }
 
-class LuqmaApp extends StatefulWidget {
-  const LuqmaApp({super.key});
+class YallaApp extends StatefulWidget {
+  const YallaApp({super.key});
 
   @override
-  State<LuqmaApp> createState() => _LuqmaAppState();
+  State<YallaApp> createState() => _YallaAppState();
 }
 
-class _LuqmaAppState extends State<LuqmaApp> {
+class _YallaAppState extends State<YallaApp> {
   final AppState _state = AppState();
 
   @override
@@ -33,7 +33,7 @@ class _LuqmaAppState extends State<LuqmaApp> {
     return AppScope(
       state: _state,
       child: MaterialApp(
-        title: 'لُقمة | توصيل الطعام',
+        title: 'يلا طلبات | توصيل الطعام',
         debugShowCheckedModeBanner: false,
         theme: buildAppTheme(),
         locale: const Locale('ar', 'SA'),
@@ -97,7 +97,7 @@ class _ResponsiveFrame extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF0C1511), Color(0xFF111D16), Color(0xFF08110D)],
+              colors: [Color(0xFF15191D), Color(0xFF181C20), Color(0xFF101316)],
             ),
           ),
           child: Stack(
@@ -112,7 +112,7 @@ class _ResponsiveFrame extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        AppColors.primary.withValues(alpha: 0.14),
+                        AppColors.primary.withValues(alpha: 0.16),
                         Colors.transparent,
                       ],
                     ),
@@ -129,7 +129,7 @@ class _ResponsiveFrame extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        const Color(0xFFE5B96E).withValues(alpha: 0.08),
+                        const Color(0xFFFF3E00).withValues(alpha: 0.07),
                         Colors.transparent,
                       ],
                     ),
@@ -188,7 +188,7 @@ class _ResponsiveFrame extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'LUQMA  ·  FOOD DELIVERY EXPERIENCE',
+                            'YALLATALABAT  ·  FOOD DELIVERY EXPERIENCE',
                             style: AppTextStyles.caption.copyWith(
                               color: Colors.white.withValues(alpha: 0.34),
                               letterSpacing: 2.1,

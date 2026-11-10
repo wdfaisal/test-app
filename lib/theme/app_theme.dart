@@ -1,47 +1,93 @@
 import 'package:flutter/material.dart';
 
+/// YallaTalabat design tokens — extracted from the supplied Stitch exports.
+///
+/// Canvas is white-first: #FFFFFF cards over #F7F9FF, hairline #EEEEEE borders.
+/// Brand orange #FF591B drives primary actions, crimson #AD3300 anchors text
+/// accents, and dark #181C20 powers the floating pills / snackbars.
 class AppColors {
-  static const primary = Color(0xFF06C167);
-  static const primaryDark = Color(0xFF049E55);
-  static const primarySoft = Color(0xFFE8F9F0);
-  static const charcoal = Color(0xFF202020);
-  static const background = Color(0xFFF8F8F8);
+  // Brand
+  static const primary = Color(0xFFFF591B);
+  static const primaryDark = Color(0xFFAD3300);
+  static const primarySoft = Color(0xFFFFEDE3);
+  static const crimson = Color(0xFFFF3E00);
+
+  // Neutrals
+  static const charcoal = Color(0xFF181C20);
+  static const dark = Color(0xFF181C20);
+  static const darkSoft = Color(0xFF2D3135);
+  static const background = Color(0xFFF7F9FF);
   static const surface = Color(0xFFFFFFFF);
-  static const textPrimary = Color(0xFF202020);
-  static const textSecondary = Color(0xFF757575);
-  static const textTertiary = Color(0xFFA0A0A0);
-  static const success = Color(0xFF16A34A);
+  static const surfaceLow = Color(0xFFF1F4F9);
+  static const surfaceContainer = Color(0xFFEBEEF3);
+  static const surfaceHigh = Color(0xFFE5E8ED);
+  static const surfaceHighest = Color(0xFFE0E3E8);
+  static const inkSoft = Color(0xFFF1F4F9);
+
+  // Text
+  static const textPrimary = Color(0xFF181C20);
+  static const textSecondary = Color(0xFF5F5E5E);
+  static const textTertiary = Color(0xFF9AA0A6);
+
+  // Semantic
+  static const success = Color(0xFF10B981);
+  static const green = Color(0xFF00A673);
+  static const greenDark = Color(0xFF006C49);
   static const border = Color(0xFFEEEEEE);
-  static const cream = Color(0xFFF3F0E8);
-  static const amber = Color(0xFFFFB020);
-  static const danger = Color(0xFFE5484D);
-  static const inkSoft = Color(0xFFF2F3F2);
+  static const cream = Color(0xFFF1F4F9);
+  static const amber = Color(0xFFF59E0B);
+  static const amberDeep = Color(0xFFD97706);
+  static const danger = Color(0xFFEF4444);
+
+  // Signature orange glow used by floating dark pills.
+  static const List<BoxShadow> pillGlow = [
+    BoxShadow(
+      color: Color(0x73FF591B),
+      blurRadius: 25,
+      offset: Offset(0, 10),
+    ),
+    BoxShadow(
+      color: Color(0x59FF591B),
+      blurRadius: 12,
+      offset: Offset(0, 4),
+    ),
+  ];
+}
+
+/// Formats [value] as a Saudi Riyal price string, e.g. `42 ر.س`.
+String money(num value, {bool decimals = false}) {
+  final text = decimals
+      ? value.toStringAsFixed(2).replaceAll('.00', '')
+      : (value == value.roundToDouble()
+            ? value.toStringAsFixed(0)
+            : value.toStringAsFixed(2));
+  return '$text ر.س';
 }
 
 class AppTextStyles {
   static const display = TextStyle(
-    fontFamily: 'Noto Kufi Arabic',
-    fontVariations: [FontVariation('wght', 700)],
-    fontSize: 30,
-    height: 1.35,
+    fontFamily: 'IBM Plex Sans Arabic',
+    fontSize: 26,
+    fontWeight: FontWeight.w700,
+    height: 1.3,
     color: AppColors.textPrimary,
-    letterSpacing: -0.6,
+    letterSpacing: -0.5,
   );
 
   static const headline = TextStyle(
-    fontFamily: 'Noto Kufi Arabic',
-    fontVariations: [FontVariation('wght', 700)],
-    fontSize: 21,
-    height: 1.45,
+    fontFamily: 'IBM Plex Sans Arabic',
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    height: 1.4,
     color: AppColors.textPrimary,
-    letterSpacing: -0.25,
+    letterSpacing: -0.3,
   );
 
   static const title = TextStyle(
     fontFamily: 'IBM Plex Sans Arabic',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: FontWeight.w700,
-    height: 1.45,
+    height: 1.4,
     color: AppColors.textPrimary,
     letterSpacing: -0.15,
   );
@@ -88,10 +134,10 @@ class AppTextStyles {
 
   static const price = TextStyle(
     fontFamily: 'IBM Plex Sans Arabic',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: FontWeight.w700,
     height: 1.3,
-    color: AppColors.textPrimary,
+    color: AppColors.primaryDark,
   );
 
   static const latinBrand = TextStyle(
@@ -127,7 +173,7 @@ ThemeData buildAppTheme() {
     colorScheme: scheme,
     textTheme: base.textTheme.copyWith(
       displayLarge: AppTextStyles.display,
-      headlineLarge: AppTextStyles.display.copyWith(fontSize: 27),
+      headlineLarge: AppTextStyles.display.copyWith(fontSize: 24),
       headlineMedium: AppTextStyles.headline,
       headlineSmall: AppTextStyles.headline.copyWith(fontSize: 18),
       titleLarge: AppTextStyles.title,
@@ -149,7 +195,7 @@ ThemeData buildAppTheme() {
       backgroundColor: AppColors.background,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -158,19 +204,19 @@ ThemeData buildAppTheme() {
       hintStyle: AppTextStyles.body.copyWith(color: AppColors.textTertiary),
       contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.border),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.danger),
       ),
     ),
@@ -178,9 +224,9 @@ ThemeData buildAppTheme() {
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        minimumSize: const Size(0, 56),
+        minimumSize: const Size(0, 50),
         textStyle: AppTextStyles.titleSmall.copyWith(color: Colors.white),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 0,
       ),
     ),
@@ -188,7 +234,7 @@ ThemeData buildAppTheme() {
       backgroundColor: AppColors.charcoal,
       contentTextStyle: AppTextStyles.bodySmall.copyWith(color: Colors.white),
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       insetPadding: const EdgeInsets.all(16),
     ),
     appBarTheme: const AppBarTheme(
@@ -197,19 +243,23 @@ ThemeData buildAppTheme() {
       elevation: 0,
       centerTitle: true,
       titleTextStyle: AppTextStyles.title,
+      iconTheme: IconThemeData(color: AppColors.textPrimary),
+    ),
+    checkboxTheme: CheckboxThemeData(
+      fillColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? AppColors.primary
+            : AppColors.surfaceHighest,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      side: const BorderSide(color: AppColors.border, width: 1.4),
+    ),
+    radioTheme: RadioThemeData(
+      fillColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? AppColors.primary
+            : AppColors.textTertiary,
+      ),
     ),
   );
 }
-
-String money(num value, {bool decimals = false}) {
-  final text = decimals
-      ? value.toStringAsFixed(2).replaceAll('.00', '')
-      : (value == value.roundToDouble()
-            ? value.toStringAsFixed(0)
-            : value.toStringAsFixed(2));
-  return '$text ر.س';
-}
-
-String twoDigits(double value) => value.toStringAsFixed(2);
-
-Color surfaceShadow = Colors.black.withValues(alpha: 0.055);

@@ -100,7 +100,7 @@ class _TrackingScreenState extends State<TrackingScreen> {
     final order =
         state.activeOrder ??
         PlacedOrder(
-          number: 'LQ-24871',
+          number: 'YT-24871',
           restaurant: restaurants.first,
           lines: [fallbackLine],
           address: state.address,
@@ -1168,7 +1168,7 @@ class _LiveMapState extends State<_LiveMap>
                   width: 110,
                   child: _MapMarker(
                     icon: Icons.restaurant_rounded,
-                    label: 'برجر لاب',
+                    label: 'برجر بوتيك',
                     color: AppColors.primary,
                   ),
                 ),
@@ -1321,15 +1321,15 @@ class _MapPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    canvas.drawRect(rect, Paint()..color = const Color(0xFFEEF1E8));
+    canvas.drawRect(rect, Paint()..color = const Color(0xFFEDF1F6));
 
-    final blockPaint = Paint()..color = const Color(0xFFF8F5EE);
+    final blockPaint = Paint()..color = const Color(0xFFFFFFFF);
     final blockBorder = Paint()
-      ..color = const Color(0xFFE4E4DC)
+      ..color = const Color(0xFFE3E8EE)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
-    final parkPaint = Paint()..color = const Color(0xFFD7E9CF);
-    final waterPaint = Paint()..color = const Color(0xFFDCEBF0);
+    final parkPaint = Paint()..color = const Color(0xFFDDEEDD);
+    final waterPaint = Paint()..color = const Color(0xFFD6E6F5);
 
     final water = Path()
       ..moveTo(-20, size.height * 0.02)
@@ -1389,12 +1389,12 @@ class _MapPainter extends CustomPainter {
     }
 
     final roadBorder = Paint()
-      ..color = const Color(0xFFE0E1D9)
+      ..color = const Color(0xFFE2E7ED)
       ..strokeWidth = 22
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
     final road = Paint()
-      ..color = const Color(0xFFFAFAF6)
+      ..color = const Color(0xFFFFFFFF)
       ..strokeWidth = 17
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
@@ -1450,7 +1450,7 @@ class _MapPainter extends CustomPainter {
     canvas.drawPath(
       route,
       Paint()
-        ..color = const Color(0xFFB9E7CC)
+        ..color = const Color(0xFFC9D4E0)
         ..strokeWidth = 5.5
         ..strokeCap = StrokeCap.round
         ..style = PaintingStyle.stroke,
@@ -1470,7 +1470,7 @@ class _MapPainter extends CustomPainter {
       canvas,
       'طريق الملك فهد',
       Offset(size.width * 0.72, size.height * 0.155),
-      color: const Color(0xFF9B9D93),
+      color: const Color(0xFF9AA0A6),
       fontSize: 9.5,
       angle: -0.03,
     );
@@ -1478,14 +1478,14 @@ class _MapPainter extends CustomPainter {
       canvas,
       'حي الياسمين',
       Offset(size.width * 0.77, size.height * 0.085),
-      color: const Color(0xFF789576),
+      color: const Color(0xFF87929E),
       fontSize: 9,
     );
     _drawLabel(
       canvas,
       'شارع الأمير سلطان',
       Offset(size.width * 0.2, size.height * 0.31),
-      color: const Color(0xFFA0A297),
+      color: const Color(0xFFA0A6B0),
       fontSize: 8.5,
       angle: -1.55,
     );
@@ -1493,7 +1493,7 @@ class _MapPainter extends CustomPainter {
       canvas,
       'حديقة الياسمين',
       Offset(size.width * 0.1, size.height * 0.355),
-      color: const Color(0xFF789576),
+      color: const Color(0xFF78A17E),
       fontSize: 8,
     );
   }

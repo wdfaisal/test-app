@@ -714,7 +714,7 @@ class _PromoSection extends StatelessWidget {
           if (error) ...[
             const SizedBox(height: 7),
             Text(
-              'هذا الكود غير صحيح. جرّب LUQMA20',
+              'هذا الكود غير صحيح. جرّب SULTAN15',
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.danger,
                 fontSize: 10,
@@ -986,7 +986,7 @@ class _OrderSummary extends StatelessWidget {
           if (state.promoApplied) ...[
             const SizedBox(height: 9),
             _SummaryRow(
-              label: 'الخصم (٢٠٪)',
+              label: 'الخصم (${state.promoCode == 'SULTAN15' ? '١٥٪' : '٢٠٪'})',
               value: '- ${money(state.discount, decimals: true)}',
               valueColor: AppColors.primaryDark,
             ),

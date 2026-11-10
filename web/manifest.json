@@ -1,11 +1,11 @@
 {
-    "name": "لُقمة | توصيل الطعام",
-    "short_name": "لُقمة",
+    "name": "يلا طلبات | توصيل الطعام",
+    "short_name": "يلا طلبات",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#F8F8F8",
-    "theme_color": "#06C167",
-    "description": "تجربة توصيل طعام فاخرة. اطلب من أفضل المطاعم وتابع طلبك مباشرة.",
+    "background_color": "#F7F9FF",
+    "theme_color": "#FF591B",
+    "description": "تجربة توصيل طعام مميزة. اطلب من أفضل المطاعم وتابع طلبك مباشرة.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

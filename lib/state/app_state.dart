@@ -37,7 +37,8 @@ class AppState extends ChangeNotifier {
 
   double get discount {
     if (!_promoApplied) return 0;
-    return math.min(subtotal * 0.2, 25);
+    final rate = _promoCode == 'SULTAN15' ? 0.15 : 0.2;
+    return math.min(subtotal * rate, 25);
   }
 
   double get total => math.max(0, subtotal + deliveryFee - discount);
@@ -118,7 +119,7 @@ class AppState extends ChangeNotifier {
 
   bool applyPromo(String code) {
     final normalized = code.trim().toUpperCase();
-    if (normalized == 'LUQMA20' || normalized == 'WELCOME20') {
+    if (normalized == 'SULTAN15' || normalized == 'WELCOME20') {
       _promoCode = normalized;
       _promoApplied = true;
       notifyListeners();
@@ -145,7 +146,7 @@ class AppState extends ChangeNotifier {
   PlacedOrder placeOrder() {
     final restaurant = _cartRestaurant;
     final order = PlacedOrder(
-      number: 'LQ-24871',
+      number: 'YT-24871',
       restaurant: restaurant ?? restaurants.first,
       lines: List.unmodifiable(_cart),
       address: _address,

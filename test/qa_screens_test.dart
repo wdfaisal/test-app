@@ -17,7 +17,7 @@ import 'package:test_app/screens/tracking_screen.dart';
 import 'package:test_app/state/app_state.dart';
 import 'package:test_app/theme/app_theme.dart';
 
-const _outDir = r'C:\Users\Almo\AppData\Local\Temp\opencode\luqma_shots';
+const _outDir = r'C:\Users\Almo\AppData\Local\Temp\opencode\yalla_shots';
 
 Future<void> _loadFonts() async {
   final plex = FontLoader('IBM Plex Sans Arabic');
@@ -30,10 +30,6 @@ Future<void> _loadFonts() async {
     plex.addFont(rootBundle.load('assets/fonts/$file'));
   }
   await plex.load();
-
-  final kufi = FontLoader('Noto Kufi Arabic');
-  kufi.addFont(rootBundle.load('assets/fonts/NotoKufiArabic-Regular.ttf'));
-  await kufi.load();
 }
 
 Widget _app(Widget home, AppState state) {
@@ -57,17 +53,22 @@ Widget _app(Widget home, AppState state) {
 Future<void> _capture(WidgetTester tester, String name) async {
   final view = tester.binding.renderViews.first;
   final layer = view.debugLayer! as OffsetLayer;
-  final image = await layer.toImage(view.paintBounds, pixelRatio: 2);
-  final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-  final file = File('$_outDir/$name.png');
-  file.parent.createSync(recursive: true);
-  file.writeAsBytesSync(bytes!.buffer.asUint8List());
+  // Rasterizing through the engine is REAL async — it must run inside
+  // runAsync, otherwise it poisons the fake-async event loop and every
+  // subsequent guarded call (pump / pumpWidget) hangs forever.
+  await tester.runAsync(() async {
+    final image = await layer.toImage(view.paintBounds, pixelRatio: 2);
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+    final file = File('$_outDir/$name.png');
+    file.parent.createSync(recursive: true);
+    file.writeAsBytesSync(bytes!.buffer.asUint8List());
+  });
 }
 
 Future<void> _precachePhotos(WidgetTester tester, BuildContext context) async {
   await tester.runAsync(() async {
     for (final name in [
-      'avocado.jpg',
+      // Shared food photography.
       'burger.jpg',
       'burger2.jpg',
       'chef.jpg',
@@ -80,13 +81,28 @@ Future<void> _precachePhotos(WidgetTester tester, BuildContext context) async {
       'pasta.jpg',
       'pizza.jpg',
       'pizza2.jpg',
-      'ramen.jpg',
-      'restaurant.jpg',
       'salad.jpg',
       'smoothie.jpg',
-      'sushi.jpg',
       'user.jpg',
       'wings.jpg',
+      // YallaTalabat design photography.
+      'yalla/y_cat_burger.jpg',
+      'yalla/y_cat_pizza.jpg',
+      'yalla/y_cat_shawarma.jpg',
+      'yalla/y_cat_kabsa.jpg',
+      'yalla/y_cat_kunafa.jpg',
+      'yalla/y_cat_coffee.jpg',
+      'yalla/y_cat_salad.jpg',
+      'yalla/y_res_burger.jpg',
+      'yalla/y_res_shawarmer.jpg',
+      'yalla/y_res_maestro.jpg',
+      'yalla/y_res_sultan.jpg',
+      'yalla/y_res_chicken.jpg',
+      'yalla/y_res_najdiah.jpg',
+      'yalla/y_item_smoke.jpg',
+      'yalla/y_item_truffle.jpg',
+      'yalla/y_item_crispy.jpg',
+      'yalla/y_item_fries.jpg',
     ]) {
       await precacheImage(AssetImage('assets/images/$name'), context);
     }
@@ -119,14 +135,14 @@ void main() {
     final state = AppState();
     addTearDown(state.dispose);
 
-    // 1. Home
+    // 1. Home — orange header, categories, brands, restaurant cards.
     await tester.pumpWidget(_app(const HomeScreen(), state));
     await tester.pump(const Duration(milliseconds: 1300));
     await _precachePhotos(tester, tester.element(find.byType(HomeScreen)));
     await tester.pump(const Duration(milliseconds: 500));
     await _capture(tester, '01_home');
 
-    // 2. Restaurant menu
+    // 2. Restaurant menu — hero, meta card, chips, item rows.
     await tester.pumpWidget(
       _app(RestaurantScreen(restaurant: restaurants.first), state),
     );
@@ -140,19 +156,23 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     await _capture(tester, '03_restaurant_scrolled');
 
-    // 3. Product customization sheet
+    // 3. Product customization sheet.
     await tester.drag(
       find.byType(CustomScrollView).first,
       const Offset(0, 260),
     );
     await tester.pump(const Duration(milliseconds: 600));
-    await tester.tap(find.text('دوبل سماش برجر').first);
+    await tester.tap(find.text('كلاسيك سموك برجر').first);
+    // The first pump only registers the route ticker's start time — a
+    // second pump is required to actually advance the entrance animation.
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 700));
     await _capture(tester, '04_product_sheet');
     await tester.tap(find.byIcon(Icons.close_rounded).first);
+    await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 600));
 
-    // 4. Checkout with an item
+    // 4. Checkout with an item.
     state.addToCart(
       restaurant: restaurants.first,
       item: restaurants.first.menu.first,
@@ -163,7 +183,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 800));
     await _capture(tester, '05_checkout');
 
-    // 5. Live tracking
+    // 5. Live tracking.
     state.placeOrder();
     await tester.pumpWidget(_app(const TrackingScreen(), state));
     await tester.pump(const Duration(milliseconds: 1200));
@@ -178,7 +198,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const LuqmaApp());
+    await tester.pumpWidget(const YallaApp());
     await tester.pump(const Duration(milliseconds: 1200));
     await _capture(tester, '08_home_mobile');
   });

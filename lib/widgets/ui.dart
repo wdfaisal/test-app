@@ -40,7 +40,7 @@ class AppImage extends StatelessWidget {
           height: height,
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFFEAF7EF), Color(0xFFD3F2E0)],
+              colors: [Color(0xFFF7F9FF), Color(0xFFEBEEF3)],
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
             ),
@@ -650,14 +650,14 @@ class BrandMark extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          'لُقمة',
+          'يلا طلبات',
           style: TextStyle(
-            fontFamily: 'Noto Kufi Arabic',
-            fontVariations: const [FontVariation('wght', 700)],
+            fontFamily: 'IBM Plex Sans Arabic',
             fontSize: size,
+            fontWeight: FontWeight.w700,
             height: 1.2,
             color: onDark ? Colors.white : AppColors.textPrimary,
-            letterSpacing: -0.6,
+            letterSpacing: -0.4,
           ),
         ),
         const SizedBox(width: 2),

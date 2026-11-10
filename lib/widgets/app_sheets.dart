@@ -234,7 +234,7 @@ Future<void> showPaymentPicker(BuildContext context) {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF202020), Color(0xFF343A36)],
+                    colors: [Color(0xFF181C20), Color(0xFF2D3135)],
                     begin: Alignment.topRight,
                     end: Alignment.bottomLeft,
                   ),
@@ -419,7 +419,7 @@ class _SearchOverlay extends StatefulWidget {
 class _SearchOverlayState extends State<_SearchOverlay> {
   final _controller = TextEditingController();
   String _query = '';
-  final _quickSearches = ['برجر', 'بيتزا', 'سوشي', 'حلويات', 'صحي'];
+  final _quickSearches = ['برجر', 'بيتزا', 'شاورما', 'حلويات', 'قهوة'];
 
   @override
   void dispose() {
@@ -981,7 +981,7 @@ Future<void> showProfileSheet(BuildContext context) {
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [AppColors.charcoal, Color(0xFF37413B)],
+                    colors: [AppColors.charcoal, AppColors.darkSoft],
                     begin: Alignment.topRight,
                     end: Alignment.bottomLeft,
                   ),
